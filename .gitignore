@@ -205,3 +205,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+# Hide migration files
+**/migrations/*
+!**/migrations/__init__.py
+
+.env*
