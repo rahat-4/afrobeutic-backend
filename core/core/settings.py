@@ -44,7 +44,7 @@ THIRD_PARTY_APPS = [
     "rest_framework",
 ]
 
-PROJECT_APPS = []
+PROJECT_APPS = ["apps.authentication"]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + PROJECT_APPS
 
@@ -145,6 +145,14 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",  # for unauthenticated users
+        # "rest_framework.throttling.UserRateThrottle",  # for authenticated users
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "20/minute",  # Adjust as needed
+        # "user": "1000/day",  # Adjust as needed
+    },
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
@@ -173,3 +181,8 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
 }
+
+
+# Email Configuration
+SENDGRID_API_KEY = config("SENDGRID_API_KEY")
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
