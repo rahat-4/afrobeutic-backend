@@ -42,6 +42,7 @@ DJANGO_APPS = [
 
 THIRD_PARTY_APPS = [
     "rest_framework",
+    "drf_spectacular",
 ]
 
 PROJECT_APPS = ["apps.authentication"]
@@ -146,12 +147,15 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_THROTTLE_CLASSES": [
-        "rest_framework.throttling.AnonRateThrottle",  # for unauthenticated users
+        "rest_framework.throttling.ScopedRateThrottle",
+        # "rest_framework.throttling.AnonRateThrottle",  # for unauthenticated users
         # "rest_framework.throttling.UserRateThrottle",  # for authenticated users
     ],
     "DEFAULT_THROTTLE_RATES": {
-        "anon": "20/minute",  # Adjust as needed
-        # "user": "1000/day",  # Adjust as needed
+        # "anon": "20/minute",
+        # "user": "1000/day",
+        "register": "20/minute",  # Registration endpoint
+        "invitation": "20/minute",  # Account access invitation endpoint
     },
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",

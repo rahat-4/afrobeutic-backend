@@ -1,9 +1,6 @@
 from django.contrib.auth.models import BaseUserManager
 
 
-from .choices import UserType
-
-
 class UserManager(BaseUserManager):
     """
     Custom manager for User model where the email is the unique identifier.
@@ -36,7 +33,6 @@ class UserManager(BaseUserManager):
         """
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_staff", True)
-        extra_fields.setdefault("user_type", UserType.SUPER_ADMIN)
 
         if not extra_fields.get("is_superuser"):
             raise ValueError("Superuser must have is_superuser=True.")

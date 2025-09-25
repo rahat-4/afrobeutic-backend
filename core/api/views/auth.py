@@ -17,6 +17,7 @@ User = get_user_model()
 class UserRegistrationView(APIView):
     serializer_class = UserRegistrationSerializer
     permission_classes = []
+    throttle_scope = "register"
 
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)

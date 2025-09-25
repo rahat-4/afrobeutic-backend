@@ -20,9 +20,10 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 COPY . .
 
 # Collect static files
-RUN python core/manage.py collectstatic --noinput
+# RUN python core/manage.py collectstatic --noinput
 
 # Expose the port the app runs on
 EXPOSE 8000
 
-CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8000"]
+# CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8000"]
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
