@@ -1,7 +1,9 @@
 from django.contrib.auth import get_user_model
 
 from rest_framework import serializers
+
 from apps.authentication.models import AccountInvitation
+from apps.authentication.choices import UserRole
 
 User = get_user_model()
 
@@ -36,9 +38,16 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        is_admin = (
+            self.context.get("request").query_params.get("admin", "false").lower()
+            == "true"
+        )
         validated_data.pop("confirm_password", None)
         password = validated_data.pop("password")
         user = User(**validated_data)
+        if is_admin:
+            user.role = UserRole.MANAGEMENT_ADMIN
+
         user.is_active = False  # User must verify email to activate account
         user.set_password(password)
         user.save()

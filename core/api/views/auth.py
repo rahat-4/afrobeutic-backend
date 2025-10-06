@@ -28,7 +28,9 @@ class UserRegistrationView(APIView):
     throttle_scope = "register"
 
     def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.serializer_class(
+            data=request.data, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
