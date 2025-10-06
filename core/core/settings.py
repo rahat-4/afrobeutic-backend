@@ -43,6 +43,8 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     "rest_framework",
     "drf_spectacular",
+    "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
 ]
 
 PROJECT_APPS = ["apps.authentication"]
@@ -155,7 +157,8 @@ REST_FRAMEWORK = {
         # "anon": "20/minute",
         # "user": "1000/day",
         "register": "20/minute",  # Registration endpoint
-        "invitation": "20/minute",  # Account access invitation endpoint
+        "invite": "20/minute",  # Account access invitation endpoint
+        "login": "20/minute",  # Login endpoint
     },
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
