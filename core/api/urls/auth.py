@@ -6,9 +6,11 @@ from ..views.auth import (
     VerifyEmailView,
     AccountInvitationView,
     AcceptInvitationView,
+    LoginView,
 )
 
 urlpatterns = [
+    path("/login", LoginView.as_view(), name="auth.login"),
     path(
         "/accept-invite/<token>/",
         AcceptInvitationView.as_view(),

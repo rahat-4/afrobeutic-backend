@@ -193,3 +193,11 @@ SPECTACULAR_SETTINGS = {
 # Email Configuration
 SENDGRID_API_KEY = config("SENDGRID_API_KEY")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
+
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": "redis://redis:6379/1",
+    }
+}

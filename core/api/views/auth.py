@@ -8,6 +8,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 
+from rest_framework_simplejwt.views import TokenObtainPairView
+
 from apps.authentication.models import AccountInvitation
 from apps.authentication.emails import (
     send_verification_email,
@@ -15,6 +17,7 @@ from apps.authentication.emails import (
 )
 
 from common.permissions import IsOwnerOrAdmin
+from common.throttles import RoleBasedLoginThrottle
 from common.utils import email_token_generator
 
 from ..serializers.auth import UserRegistrationSerializer, AccountInvitationSerializer
@@ -242,3 +245,7 @@ class AcceptInvitationView(APIView):
             {"message": "Account created. Verification email sent."},
             status=status.HTTP_201_CREATED,
         )
+
+
+class LoginView(TokenObtainPairView):
+    throttle_classes = [RoleBasedLoginThrottle]
