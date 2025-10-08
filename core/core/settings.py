@@ -27,7 +27,7 @@ SECRET_KEY = "django-insecure-53g8hyl%j%(!nf2!g&=)s-7=&yi4%9#2$@865qq)n#0)mt$yiq
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["181.215.69.66", "api.afrobeutic.com", "localhost"]
 
 
 # Application definition
@@ -47,7 +47,7 @@ THIRD_PARTY_APPS = [
     "rest_framework_simplejwt.token_blacklist",
 ]
 
-PROJECT_APPS = ["apps.authentication"]
+PROJECT_APPS = ["apps.authentication", "apps.salon"]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + PROJECT_APPS
 
