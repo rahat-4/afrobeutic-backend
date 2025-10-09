@@ -13,7 +13,7 @@ def send_verification_email(user) -> bool:
     uidb64 = urlsafe_base64_encode(force_bytes(user.uid))
     token = email_token_generator.make_token(user)
     verification_link = (
-        f"http://localhost:8000/api/v1/auth/verify-email/{uidb64}/{token}/"
+        f"http://181.215.69.66:8000/api/v1/auth/verify-email/{uidb64}/{token}/"
     )
     message = Mail(
         from_email=settings.DEFAULT_FROM_EMAIL,
@@ -60,7 +60,7 @@ def send_verification_email(user) -> bool:
 
 def send_account_invitation_email(invitation) -> bool:
     invitation_link = (
-        f"http://localhost:8000/api/v1/auth/accept-invite/{invitation.uid}/"
+        f"http://181.215.69.66:8000/api/v1/auth/accept-invite/{invitation.uid}/"
     )
 
     message = Mail(

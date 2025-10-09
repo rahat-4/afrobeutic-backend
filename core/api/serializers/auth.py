@@ -81,3 +81,20 @@ class AccountInvitationSerializer(serializers.ModelSerializer):
                     "An invitation has already been sent to this email."
                 )
         return value
+
+
+class MeSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = [
+            "uid",
+            "avatar",
+            "first_name",
+            "last_name",
+            "email",
+            "role",
+            "gender",
+            "country",
+        ]
+        read_only_fields = ["uid", "email"]
