@@ -94,7 +94,6 @@ class MeSerializer(serializers.ModelSerializer):
             "last_name",
             "email",
             "role",
-            "gender",
             "country",
         ]
         read_only_fields = ["uid", "email"]

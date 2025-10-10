@@ -1,4 +1,6 @@
 import uuid
+from django_countries.fields import CountryField
+
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 from django.utils import timezone
@@ -32,7 +34,8 @@ class User(AbstractBaseUser, PermissionsMixin, BaseModel):
         choices=UserRole.choices,
         default=UserRole.OWNER,
     )
-    country = models.CharField(max_length=100, null=True, blank=True)
+    country = CountryField()
+
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)

@@ -63,7 +63,7 @@ class VerifyEmailView(APIView):
         except (User.DoesNotExist, ValueError, TypeError, OverflowError):
             params = urlencode({"error": "invalid_link"})
             return HttpResponseRedirect(
-                f"https://your-frontend.com/verify-error?{params}"
+                f"http://localhost:3000/auth/signup/error?{params}"
             )
 
         if user.is_active:
@@ -76,7 +76,7 @@ class VerifyEmailView(APIView):
         else:
             params = urlencode({"error": "expired_or_invalid"})
             return HttpResponseRedirect(
-                f"https://your-frontend.com/verify-error?{params}"
+                f"http://localhost:3000/auth/signup/error?{params}"
             )
 
 
@@ -154,13 +154,13 @@ class AcceptInvitationView(APIView):
         except AccountInvitation.DoesNotExist:
             params = urlencode({"error": "invalid_invitation"})
             return HttpResponseRedirect(
-                f"https://your-frontend.com/invite-error?{params}"
+                f"http://localhost:3000/auth/signup/error?{params}"
             )
 
         if invitation.is_expired():
             params = urlencode({"error": "expired_invitation"})
             return HttpResponseRedirect(
-                f"https://your-frontend.com/invite-error?{params}"
+                f"http://localhost:3000/auth/signup/error?{params}"
             )
 
         email = invitation.email.lower()
@@ -192,13 +192,13 @@ class AcceptInvitationView(APIView):
         except AccountInvitation.DoesNotExist:
             params = urlencode({"error": "invalid_invitation"})
             return HttpResponseRedirect(
-                f"https://your-frontend.com/invite-error?{params}"
+                f"http://localhost:3000/auth/signup/error?{params}"
             )
 
         if invitation.is_expired():
             params = urlencode({"error": "expired_invitation"})
             return HttpResponseRedirect(
-                f"https://your-frontend.com/invite-error?{params}"
+                f"http://localhost:3000/auth/signup/error?{params}"
             )
 
         email = invitation.email.lower()
