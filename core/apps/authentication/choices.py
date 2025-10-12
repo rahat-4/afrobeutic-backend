@@ -7,7 +7,7 @@ class UserGender(models.TextChoices):
     OTHER = "OTHER", "Other"
 
 
-class UserRole(models.TextChoices):
+class AccountMembershipRole(models.TextChoices):
     MANAGEMENT_ADMIN = "MANAGEMENT_ADMIN", "Management Admin"
     MANAGEMENT_STAFF = "MANAGEMENT_STAFF", "Management Staff"
     OWNER = "OWNER", "Owner"

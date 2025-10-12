@@ -13,7 +13,8 @@ from rest_framework import status
 
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from apps.authentication.models import AccountInvitation
+from apps.authentication.choices import AccountMembershipRole
+from apps.authentication.models import AccountInvitation, AccountMembership
 from apps.authentication.emails import (
     send_verification_email,
     send_account_invitation_email,
@@ -38,9 +39,7 @@ class UserRegistrationView(APIView):
     throttle_scope = "register"
 
     def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(
-            data=request.data, context={"request": request}
-        )
+        serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
@@ -132,6 +131,7 @@ class AccountInvitationView(APIView):
         serializer.is_valid(raise_exception=True)
         invitation = serializer.save(
             invited_by=request.user,
+            account=request.user.memberships.first().account,
             expires_at=timezone.now() + timedelta(minutes=60),
         )
 
@@ -168,11 +168,16 @@ class AcceptInvitationView(APIView):
 
         if existing_user:
             # ✅ Auto-accept and activate
-            existing_user.role = invitation.role
+            AccountMembership.objects.get_or_create(
+                user=existing_user,
+                account=invitation.account,
+                defaults={"role": invitation.role},
+            )
             existing_user.is_active = True
             existing_user.save()
 
             invitation.is_accepted = True
+            invitation.accepted_at = timezone.now()
             invitation.save()
 
             # ✅ Redirect to login

@@ -1,9 +1,10 @@
 from django.contrib.auth import get_user_model
+from django.db import transaction
 
 from rest_framework import serializers
 
-from apps.authentication.models import AccountInvitation
-from apps.authentication.choices import UserRole
+from apps.authentication.models import Account, AccountMembership, AccountInvitation
+from apps.authentication.choices import AccountMembershipRole
 
 User = get_user_model()
 
@@ -38,20 +39,23 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        is_admin = (
-            self.context.get("request").query_params.get("admin", "false").lower()
-            == "true"
-        )
-        validated_data.pop("confirm_password", None)
-        password = validated_data.pop("password")
-        user = User(**validated_data)
-        if is_admin:
-            user.role = UserRole.MANAGEMENT_ADMIN
+        with transaction.atomic():
+            validated_data.pop("confirm_password", None)
+            password = validated_data.pop("password")
+            user = User(**validated_data)
+            user.is_active = False  # User must verify email to activate account
+            user.set_password(password)
+            user.save()
 
-        user.is_active = False  # User must verify email to activate account
-        user.set_password(password)
-        user.save()
-        return user
+            account = Account.objects.create(
+                name=f"{user.first_name}'s Account", owner=user
+            )
+
+            AccountMembership.objects.create(
+                user=user, account=account, role=AccountMembershipRole.OWNER
+            )
+
+            return user
 
 
 class AccountInvitationSerializer(serializers.ModelSerializer):
@@ -83,7 +87,18 @@ class AccountInvitationSerializer(serializers.ModelSerializer):
         return value
 
 
+class AccountSerializer(serializers.ModelSerializer):
+    uid = serializers.CharField(source="account.uid", read_only=True)
+    name = serializers.CharField(source="account.name", read_only=True)
+    owner_email = serializers.CharField(source="account.owner.email", read_only=True)
+
+    class Meta:
+        model = AccountMembership
+        fields = ["uid", "name", "owner_email", "role"]
+
+
 class MeSerializer(serializers.ModelSerializer):
+    accounts = AccountSerializer(source="memberships", many=True, read_only=True)
 
     class Meta:
         model = User
@@ -93,7 +108,7 @@ class MeSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "email",
-            "role",
             "country",
+            "accounts",
         ]
         read_only_fields = ["uid", "email"]

@@ -1,6 +1,14 @@
 from django.db import models
 
 
+class MemberRole(models.TextChoices):
+    MANAGEMENT_ADMIN = "MANAGEMENT_ADMIN", "Management Admin"
+    MANAGEMENT_STAFF = "MANAGEMENT_STAFF", "Management Staff"
+    OWNER = "OWNER", "Owner"
+    ADMIN = "ADMIN", "Admin"
+    STAFF = "STAFF", "Staff"
+
+
 class SalonType(models.TextChoices):
     UNISEX = "UNISEX", "Unisex"
     MALE = "MALE", "Male"

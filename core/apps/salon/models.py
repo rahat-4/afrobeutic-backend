@@ -6,7 +6,15 @@ from phonenumber_field.modelfields import PhoneNumberField
 
 from common.models import BaseModel
 
-from .choices import SalonType, SalonStatus, ServiceCategory, DaysOfWeek, BookingStatus
+from apps.authentication.models import Account
+
+from .choices import (
+    SalonType,
+    SalonStatus,
+    ServiceCategory,
+    DaysOfWeek,
+    BookingStatus,
+)
 
 User = get_user_model()
 
@@ -16,8 +24,8 @@ class Salon(BaseModel):
     salon_type = models.CharField(
         max_length=10, choices=SalonType.choices, default=SalonType.MALE
     )
-    email = models.EmailField(unique=True)
-    phone = PhoneNumberField(unique=True)
+    email = models.EmailField()
+    phone = PhoneNumberField()
     website = models.URLField(blank=True, null=True)
     street = models.CharField(max_length=255)
     city = models.CharField(max_length=100)
@@ -29,23 +37,13 @@ class Salon(BaseModel):
         max_length=10, choices=SalonStatus.choices, default=SalonStatus.OPEN
     )
 
-    class Meta:
-        unique_together = ["phone", "email"]
+    # Fk
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, related_name="account_salons"
+    )
 
     def __str__(self):
         return f"{self.name} - {self.city}"
-
-
-class SalonMember(BaseModel):
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="member_salons"
-    )
-    salon = models.ForeignKey(
-        Salon, on_delete=models.CASCADE, related_name="salon_members"
-    )
-
-    def __str__(self):
-        return f"{self.user.username} - {self.salon.name}"
 
 
 class OpeningHours(BaseModel):
@@ -58,7 +56,7 @@ class OpeningHours(BaseModel):
 
     # Fk
     salon = models.ForeignKey(
-        Salon, on_delete=models.CASCADE, related_name="salon_opening_hours"
+        Salon, on_delete=models.CASCADE, related_name="opening_hours"
     )
 
     def __str__(self):

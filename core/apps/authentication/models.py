@@ -1,4 +1,3 @@
-import uuid
 from django_countries.fields import CountryField
 
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
@@ -7,7 +6,7 @@ from django.utils import timezone
 
 from common.models import BaseModel
 
-from .choices import UserGender, UserRole
+from .choices import AccountMembershipRole, UserGender
 from .managers import UserManager
 from .utils import get_user_media_path_prefix
 
@@ -29,11 +28,6 @@ class User(AbstractBaseUser, PermissionsMixin, BaseModel):
         choices=UserGender.choices,
         default=UserGender.OTHER,
     )
-    role = models.CharField(
-        max_length=20,
-        choices=UserRole.choices,
-        default=UserRole.OWNER,
-    )
     country = CountryField()
 
     is_active = models.BooleanField(default=True)
@@ -52,19 +46,52 @@ class User(AbstractBaseUser, PermissionsMixin, BaseModel):
         return f"{self.first_name} {self.last_name}"
 
 
-class AccountInvitation(BaseModel):
-    email = models.EmailField(max_length=255)
+class Account(BaseModel):
+    name = models.CharField(max_length=255)
+    owner = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="created_accounts"
+    )
+
+    def __str__(self):
+        return f"Account: {self.name} owned by {self.owner.email}"
+
+
+class AccountMembership(BaseModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="memberships")
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, related_name="members"
+    )
     role = models.CharField(
         max_length=20,
-        choices=UserRole.choices,
-        default=UserRole.STAFF,
+        choices=AccountMembershipRole.choices,
+        default=AccountMembershipRole.OWNER,
     )
+
+    class Meta:
+        unique_together = ["user", "account"]
+
+    def __str__(self):
+        return f"{self.user.email} in {self.account.name} as {self.role}"
+
+
+class AccountInvitation(BaseModel):
+    email = models.EmailField(max_length=255)
     invited_by = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name="invitations_sender",
     )
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, related_name="invitations"
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=AccountMembershipRole.choices,
+        default=AccountMembershipRole.STAFF,
+    )
     is_accepted = models.BooleanField(default=False)
+    invited_at = models.DateTimeField(auto_now_add=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
     expires_at = models.DateTimeField()
 
     def is_expired(self):

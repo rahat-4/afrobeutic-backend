@@ -2,7 +2,8 @@ from django.contrib.auth import get_user_model
 
 from rest_framework.throttling import SimpleRateThrottle
 
-from apps.authentication.choices import UserRole
+from apps.authentication.models import AccountMembership
+from apps.authentication.choices import AccountMembershipRole
 
 User = get_user_model()
 
@@ -18,10 +19,15 @@ class RoleBasedLoginThrottle(SimpleRateThrottle):
 
         try:
             user = User.objects.get(email=email)
-            if user.role == UserRole.MANAGEMENT_ADMIN:
-                self.rate = "2/minute"
-            else:
-                self.rate = "20/minute"
+            membership = AccountMembership.objects.filter(user=user).first()
+            if membership:
+                if user.is_staff and membership.role in [
+                    AccountMembershipRole.MANAGEMENT_ADMIN,
+                    AccountMembershipRole.MANAGEMENT_STAFF,
+                ]:
+                    self.rate = "2/minute"
+                else:
+                    self.rate = "20/minute"
         except User.DoesNotExist:
             # If user not found, apply a default rate to prevent abuse
             self.rate = "20/minute"

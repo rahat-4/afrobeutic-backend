@@ -44,7 +44,7 @@ urlpatterns = [
     ),
     # ReDoc UI
     path("api/redoc", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
-    path("api/v1", include("api.urls")),
+    path("api", include("api.urls")),
 ]
 
 if settings.DEBUG:
