@@ -3,9 +3,10 @@ from datetime import datetime, timedelta, time
 from django.db import transaction
 
 from rest_framework import serializers
+from rest_framework.generics import get_object_or_404
 
 from apps.authentication.models import AccountMembership, AccountMembershipRole
-from apps.salon.models import Salon, OpeningHours
+from apps.salon.models import Salon, OpeningHours, SalonMedia, Service
 
 
 class OpeningHoursSerializer(serializers.ModelSerializer):
@@ -139,4 +140,68 @@ class SalonSerializer(serializers.ModelSerializer):
                 OpeningHours.objects.filter(salon=instance).delete()
                 for opening_hour in opening_hours:
                     OpeningHours.objects.create(salon=instance, **opening_hour)
+            return instance
+
+
+class SalonMediaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SalonMedia
+        fields = ["uid", "image", "order", "is_primary"]
+
+
+class SalonServiceSerializer(serializers.ModelSerializer):
+    images = SalonMediaSerializer(many=True, read_only=True, source="service_images")
+    uploaded_images = serializers.ListField(
+        child=serializers.ImageField(), write_only=True, required=False
+    )
+
+    class Meta:
+        model = Service
+        fields = [
+            "uid",
+            "name",
+            "category",
+            "price",
+            "description",
+            "images",
+            "uploaded_images",
+        ]
+
+    def create(self, validated_data):
+        uploaded_images = validated_data.pop("uploaded_images", [])
+
+        with transaction.atomic():
+            service = Service.objects.create(**validated_data)
+
+            # Create images
+            for index, image in enumerate(uploaded_images):
+                SalonMedia.objects.create(
+                    service=service, image=image, order=index, is_primary=(index == 0)
+                )
+
+            return service
+
+    def update(self, instance, validated_data):
+        uploaded_images = validated_data.pop("uploaded_images", None)
+
+        with transaction.atomic():
+            # Update service fields
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+            instance.save()
+
+            # If new images are uploaded, replace old ones
+            if uploaded_images is not None:
+                # Delete old images
+                SalonMedia.objects.filter(service=instance).delete()
+
+                # Create new images
+                for index, image in enumerate(uploaded_images):
+                    SalonMedia.objects.create(
+                        service=instance,
+                        image=image,
+                        order=index,
+                        is_primary=(index == 0),
+                    )
+
             return instance
