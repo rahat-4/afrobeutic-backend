@@ -3,6 +3,8 @@ from django.db import transaction
 
 from rest_framework import serializers
 
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
 from apps.authentication.models import Account, AccountMembership, AccountInvitation
 from apps.authentication.choices import AccountMembershipRole
 
@@ -52,7 +54,10 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             )
 
             AccountMembership.objects.create(
-                user=user, account=account, role=AccountMembershipRole.OWNER
+                user=user,
+                account=account,
+                role=AccountMembershipRole.OWNER,
+                is_owner=True,
             )
 
             return user
@@ -98,7 +103,7 @@ class AccountSerializer(serializers.ModelSerializer):
 
 
 class MeSerializer(serializers.ModelSerializer):
-    accounts = AccountSerializer(source="memberships", many=True, read_only=True)
+    role = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -108,7 +113,24 @@ class MeSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "email",
+            "role",
             "country",
-            "accounts",
         ]
         read_only_fields = ["uid", "email"]
+
+    def get_role(self, obj):
+        return self.context.get("request").account.members.filter(user=obj).first().role
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+
+        # Add custom data to the response
+        account = self.user.memberships.filter(is_owner=True).first().account
+        if account:
+            data["account_id"] = str(account.uid)
+        else:
+            data["account_id"] = None
+
+        return data

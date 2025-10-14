@@ -27,6 +27,7 @@ from common.utils import email_token_generator
 from ..serializers.auth import (
     UserRegistrationSerializer,
     AccountInvitationSerializer,
+    CustomTokenObtainPairSerializer,
     MeSerializer,
 )
 
@@ -242,6 +243,7 @@ class AcceptInvitationView(APIView):
 
 
 class LoginView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
     throttle_classes = [RoleBasedLoginThrottle]
 
 

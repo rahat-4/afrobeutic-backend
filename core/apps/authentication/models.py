@@ -66,6 +66,7 @@ class AccountMembership(BaseModel):
         choices=AccountMembershipRole.choices,
         default=AccountMembershipRole.OWNER,
     )
+    is_owner = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ["user", "account"]
