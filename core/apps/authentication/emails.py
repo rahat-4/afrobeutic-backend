@@ -60,7 +60,7 @@ def send_verification_email(user) -> bool:
 
 def send_account_invitation_email(invitation) -> bool:
     invitation_link = (
-        f"http://181.215.69.66:8000/api/auth/accept-invite/{invitation.uid}/"
+        f"http://181.215.69.66:8000/api/auth/accept-invitation/{invitation.uid}/"
     )
 
     message = Mail(

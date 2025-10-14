@@ -26,7 +26,6 @@ from common.utils import email_token_generator
 
 from ..serializers.auth import (
     UserRegistrationSerializer,
-    AccountInvitationSerializer,
     CustomTokenObtainPairSerializer,
     MeSerializer,
 )
@@ -120,31 +119,6 @@ class ResendVerificationEmailView(APIView):
             )
 
 
-class AccountInvitationView(APIView):
-    serializer_class = AccountInvitationSerializer
-    permission_classes = [IsOwnerOrAdmin]
-    throttle_scope = "invite"
-
-    def post(self, request):
-        serializer = self.serializer_class(
-            data=request.data, context={"request": request}
-        )
-        serializer.is_valid(raise_exception=True)
-        invitation = serializer.save(
-            invited_by=request.user,
-            account=request.user.memberships.first().account,
-            expires_at=timezone.now() + timedelta(minutes=60),
-        )
-
-        # Send invitation email
-        send_account_invitation_email(invitation)
-
-        return Response(
-            {"message": "Account invitation sent.", "expires_in_minutes": 60},
-            status=status.HTTP_200_OK,
-        )
-
-
 class AcceptInvitationView(APIView):
     serializer_class = UserRegistrationSerializer
     permission_classes = []
@@ -188,9 +162,7 @@ class AcceptInvitationView(APIView):
             params = urlencode(
                 {"email": email, "role": invitation.role, "token": invitation.uid}
             )
-            return HttpResponseRedirect(
-                f"https://your-frontend.com/register-invite?{params}"
-            )
+            return HttpResponseRedirect(f"http://localhost:3000/auth/signup?{params}")
 
     def post(self, request, token):
         try:
@@ -212,7 +184,7 @@ class AcceptInvitationView(APIView):
 
         if existing_user:
             params = urlencode({"error": "already_exists"})
-            return HttpResponseRedirect(f"https://your-frontend.com/login?{params}")
+            return HttpResponseRedirect(f"http://localhost:3000/login?{params}")
 
         # Validate new user data
         serializer = self.serializer_class(data=request.data)
@@ -223,23 +195,24 @@ class AcceptInvitationView(APIView):
             user.delete()
             params = urlencode({"error": "email_mismatch"})
             return HttpResponseRedirect(
-                f"https://your-frontend.com/register-invite?{params}"
+                f"http://localhost:3000/register-invite?{params}"
             )
 
         # Complete invitation
         invitation.is_accepted = True
         invitation.save()
 
-        user.role = invitation.role
-        user.save()
+        AccountMembership.objects.create(
+            user=user,
+            account=invitation.account,
+            role=invitation.role,
+        )
 
         # Send verification email
         send_verification_email(user)
 
         # ✅ Redirect to email verification info page
-        return HttpResponseRedirect(
-            f"https://your-frontend.com/verify-email?email={email}"
-        )
+        return HttpResponseRedirect(f"http://localhost:3000/verify-email?email={email}")
 
 
 class LoginView(TokenObtainPairView):

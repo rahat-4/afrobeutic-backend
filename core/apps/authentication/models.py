@@ -99,4 +99,4 @@ class AccountInvitation(BaseModel):
         return timezone.now() > self.expires_at
 
     def __str__(self):
-        return f"Invitation to {self.email} as {self.role} by {self.invited_by.email}"
+        return f"Invitation to {self.email} as {self.role} by {self.invited_by.email} | UID: {self.uid}"

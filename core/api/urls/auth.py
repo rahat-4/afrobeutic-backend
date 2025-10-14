@@ -1,28 +1,22 @@
 from django.urls import path
 
 from ..views.auth import (
+    AcceptInvitationView,
     UserRegistrationView,
     ResendVerificationEmailView,
     VerifyEmailView,
-    AccountInvitationView,
-    AcceptInvitationView,
     LoginView,
     MeView,
 )
 
 urlpatterns = [
+    path(
+        "/accept-invitation/<token>/",
+        AcceptInvitationView.as_view(),
+        name="auth.accept-invitation",
+    ),
     path("/me", MeView.as_view(), name="auth.me"),
     path("/login", LoginView.as_view(), name="auth.login"),
-    path(
-        "/accept-invite/<token>/",
-        AcceptInvitationView.as_view(),
-        name="auth.accept-invite",
-    ),
-    path(
-        "/account-invite",
-        AccountInvitationView.as_view(),
-        name="auth.invite",
-    ),
     path(
         "/resend-verification-email",
         ResendVerificationEmailView.as_view(),

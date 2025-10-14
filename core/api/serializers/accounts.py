@@ -1,6 +1,13 @@
+from django.contrib.auth import get_user_model
+from django.db import transaction
+
 from rest_framework import serializers
 
-from apps.authentication.models import Account
+from apps.authentication.choices import AccountMembershipRole
+from apps.authentication.models import Account, AccountInvitation, AccountMembership
+
+
+User = get_user_model()
 
 
 class AccountSerializer(serializers.ModelSerializer):
@@ -19,3 +26,32 @@ class AccountSerializer(serializers.ModelSerializer):
         user = self.context.get("request").user
         membership = obj.members.filter(user=user).first()
         return membership.role if membership else None
+
+
+class AccountInvitationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AccountInvitation
+        fields = ["email", "role"]
+        extra_kwargs = {
+            "email": {"required": True},
+            "role": {"required": True},
+        }
+
+    def validate_email(self, value):
+        request = self.context.get("request")
+        if request and request.user.email.lower() == value.lower():
+            raise serializers.ValidationError("You cannot invite yourself.")
+
+        # Check for existing unaccepted invitation
+        account_invitation = AccountInvitation.objects.filter(
+            email=value, is_accepted=False
+        ).first()
+
+        if account_invitation:
+            if account_invitation.is_expired():
+                account_invitation.delete()
+            else:
+                raise serializers.ValidationError(
+                    "An invitation has already been sent to this email."
+                )
+        return value

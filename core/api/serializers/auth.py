@@ -63,35 +63,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             return user
 
 
-class AccountInvitationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AccountInvitation
-        fields = ["email", "role"]
-        extra_kwargs = {
-            "email": {"required": True},
-            "role": {"required": True},
-        }
-
-    def validate_email(self, value):
-        request = self.context.get("request")
-        if request and request.user.email.lower() == value.lower():
-            raise serializers.ValidationError("You cannot invite yourself.")
-
-        # Check for existing unaccepted invitation
-        account_invitation = AccountInvitation.objects.filter(
-            email=value, is_accepted=False
-        ).first()
-
-        if account_invitation:
-            if account_invitation.is_expired():
-                account_invitation.delete()
-            else:
-                raise serializers.ValidationError(
-                    "An invitation has already been sent to this email."
-                )
-        return value
-
-
 class AccountSerializer(serializers.ModelSerializer):
     uid = serializers.CharField(source="account.uid", read_only=True)
     name = serializers.CharField(source="account.name", read_only=True)
