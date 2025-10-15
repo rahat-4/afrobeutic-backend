@@ -87,10 +87,16 @@ class MeSerializer(serializers.ModelSerializer):
             "role",
             "country",
         ]
-        read_only_fields = ["uid", "email"]
+        read_only_fields = ["uid", "email", "role"]
 
     def get_role(self, obj):
-        return self.context.get("request").account.members.filter(user=obj).first().role
+        account = self.context.get("request").account
+        try:
+            role = AccountMembership.objects.get(user=obj, account=account).role
+        except AccountMembership.DoesNotExist:
+            role = None
+
+        return role
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

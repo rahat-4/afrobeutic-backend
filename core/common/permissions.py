@@ -34,7 +34,9 @@ class IsOwner(BasePermission):
             request.user
             and request.user.is_authenticated
             and AccountMembership.objects.filter(
-                user=request.user, role=AccountMembershipRole.OWNER
+                user=request.user,
+                account=request.account,
+                role=AccountMembershipRole.OWNER,
             ).exists()
         )
 
@@ -45,7 +47,9 @@ class IsAdmin(BasePermission):
             request.user
             and request.user.is_authenticated
             and AccountMembership.objects.filter(
-                user=request.user, role=AccountMembershipRole.ADMIN
+                user=request.user,
+                account=request.account,
+                role=AccountMembershipRole.ADMIN,
             ).exists()
         )
 
@@ -56,7 +60,9 @@ class IsStaff(BasePermission):
             request.user
             and request.user.is_authenticated
             and AccountMembership.objects.filter(
-                user=request.user, role=AccountMembershipRole.STAFF
+                user=request.user,
+                account=request.account,
+                role=AccountMembershipRole.STAFF,
             ).exists()
         )
 
@@ -69,6 +75,7 @@ class IsOwnerOrAdmin(BasePermission):
             and request.user.is_authenticated
             and AccountMembership.objects.filter(
                 user=request.user,
+                account=request.account,
                 role__in=[AccountMembershipRole.OWNER, AccountMembershipRole.ADMIN],
             ).exists()
         )
@@ -103,6 +110,7 @@ class IsOwnerOrAdminOrStaff(BasePermission):
             and request.user.is_authenticated
             and AccountMembership.objects.filter(
                 user=request.user,
+                account=request.account,
                 role__in=[
                     AccountMembershipRole.OWNER,
                     AccountMembershipRole.ADMIN,

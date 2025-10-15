@@ -10,22 +10,14 @@ from apps.authentication.models import Account, AccountInvitation, AccountMember
 User = get_user_model()
 
 
-class AccountSerializer(serializers.ModelSerializer):
-    owner_name = serializers.SerializerMethodField()
-    owner_email = serializers.EmailField(source="owner.email", read_only=True)
-    role = serializers.SerializerMethodField()
+class AccountMemberSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source="user.get_full_name", read_only=True)
+    email = serializers.EmailField(source="user.email", read_only=True)
 
     class Meta:
-        model = Account
-        fields = ["uid", "name", "owner_name", "owner_email", "role"]
-
-    def get_owner_name(self, obj):
-        return f"{obj.owner.first_name} {obj.owner.last_name}"
-
-    def get_role(self, obj):
-        user = self.context.get("request").user
-        membership = obj.members.filter(user=user).first()
-        return membership.role if membership else None
+        model = AccountMembership
+        fields = ["uid", "name", "email", "role", "status"]
+        read_only_fields = ["uid", "name", "email"]
 
 
 class AccountInvitationSerializer(serializers.ModelSerializer):
@@ -55,3 +47,21 @@ class AccountInvitationSerializer(serializers.ModelSerializer):
                     "An invitation has already been sent to this email."
                 )
         return value
+
+
+class AccountAccessSerializer(serializers.ModelSerializer):
+    owner_name = serializers.SerializerMethodField()
+    owner_email = serializers.EmailField(source="owner.email", read_only=True)
+    role = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Account
+        fields = ["uid", "name", "owner_name", "owner_email", "role"]
+
+    def get_owner_name(self, obj):
+        return f"{obj.owner.first_name} {obj.owner.last_name}"
+
+    def get_role(self, obj):
+        user = self.context.get("request").user
+        membership = obj.members.filter(user=user).first()
+        return membership.role if membership else None

@@ -6,7 +6,7 @@ from django.http import HttpResponseRedirect
 from django.utils import timezone
 
 from rest_framework import status
-from rest_framework.generics import ListCreateAPIView
+from rest_framework.generics import ListAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
@@ -17,23 +17,35 @@ from apps.authentication.emails import (
     send_account_invitation_email,
 )
 
-from common.permissions import IsOwnerOrAdmin
+from common.permissions import IsOwner, IsOwnerOrAdmin, IsOwnerOrAdminOrStaff
 
 from ..serializers.accounts import (
-    AccountSerializer,
+    AccountAccessSerializer,
     AccountInvitationSerializer,
+    AccountMemberSerializer,
 )
 
 
 User = get_user_model()
 
 
-class AccountListView(ListCreateAPIView):
-    serializer_class = AccountSerializer
+class AccountMemberListView(ListAPIView):
+    serializer_class = AccountMemberSerializer
+    permission_classes = [IsOwnerOrAdminOrStaff]
 
     def get_queryset(self):
-        user = self.request.user
-        return Account.objects.filter(members__user=user)
+        account = self.request.account
+        return AccountMembership.objects.filter(account=account)
+
+
+class AccountMemberDetailView(RetrieveUpdateDestroyAPIView):
+    serializer_class = AccountMemberSerializer
+    permission_classes = [IsOwner]
+
+    def get_object(self):
+        account = self.request.account
+        member_uid = self.kwargs.get("member_uid")
+        return AccountMembership.objects.get(account=account, uid=member_uid)
 
 
 class AccountInvitationView(APIView):
@@ -59,3 +71,11 @@ class AccountInvitationView(APIView):
             {"message": "Account invitation sent.", "expires_in_minutes": 60},
             status=status.HTTP_200_OK,
         )
+
+
+class AccountAccessListView(ListAPIView):
+    serializer_class = AccountAccessSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        return Account.objects.filter(members__user=user)

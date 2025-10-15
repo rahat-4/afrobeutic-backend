@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from common.models import BaseModel
 
-from .choices import AccountMembershipRole, UserGender
+from .choices import AccountMembershipRole, UserGender, AccountMembershipStatus
 from .managers import UserManager
 from .utils import get_user_media_path_prefix
 
@@ -65,6 +65,11 @@ class AccountMembership(BaseModel):
         max_length=20,
         choices=AccountMembershipRole.choices,
         default=AccountMembershipRole.OWNER,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=AccountMembershipStatus.choices,
+        default=AccountMembershipStatus.ACTIVE,
     )
     is_owner = models.BooleanField(default=False)
 

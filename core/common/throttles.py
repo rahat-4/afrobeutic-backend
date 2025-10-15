@@ -21,11 +21,11 @@ class RoleBasedLoginThrottle(SimpleRateThrottle):
             user = User.objects.get(email=email)
             membership = AccountMembership.objects.filter(user=user).first()
             if membership:
-                if user.is_staff and membership.role in [
+                if membership.role in [
                     AccountMembershipRole.MANAGEMENT_ADMIN,
                     AccountMembershipRole.MANAGEMENT_STAFF,
                 ]:
-                    self.rate = "2/minute"
+                    self.rate = "5/minute"
                 else:
                     self.rate = "20/minute"
         except User.DoesNotExist:
