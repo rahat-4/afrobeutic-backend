@@ -6,7 +6,7 @@ from rest_framework import serializers
 from rest_framework.generics import get_object_or_404
 
 from apps.authentication.models import AccountMembership, AccountMembershipRole
-from apps.salon.models import Salon, OpeningHours, SalonMedia, Service
+from apps.salon.models import Salon, OpeningHours, SalonMedia, Service, Product
 
 
 class OpeningHoursSerializer(serializers.ModelSerializer):
@@ -167,6 +167,14 @@ class SalonServiceSerializer(serializers.ModelSerializer):
             "uploaded_images",
         ]
 
+    def validate_uploaded_images(self, value):
+        """
+        Ensure no more than 2 images are uploaded.
+        """
+        if len(value) > 2:
+            raise serializers.ValidationError("You can upload a maximum of 2 images.")
+        return value
+
     def create(self, validated_data):
         uploaded_images = validated_data.pop("uploaded_images", [])
 
@@ -199,6 +207,72 @@ class SalonServiceSerializer(serializers.ModelSerializer):
                 for index, image in enumerate(uploaded_images):
                     SalonMedia.objects.create(
                         service=instance,
+                        image=image,
+                        order=index,
+                        is_primary=(index == 0),
+                    )
+
+            return instance
+
+
+class SalonProductSerializer(serializers.ModelSerializer):
+    images = SalonMediaSerializer(many=True, read_only=True, source="product_images")
+    uploaded_images = serializers.ListField(
+        child=serializers.ImageField(), write_only=True, required=False
+    )
+
+    class Meta:
+        model = Product
+        fields = [
+            "uid",
+            "name",
+            "category",
+            "price",
+            "description",
+            "images",
+            "uploaded_images",
+        ]
+
+    def validate_uploaded_images(self, value):
+        """
+        Ensure no more than 2 images are uploaded.
+        """
+        if len(value) > 2:
+            raise serializers.ValidationError("You can upload a maximum of 2 images.")
+        return value
+
+    def create(self, validated_data):
+        uploaded_images = validated_data.pop("uploaded_images", [])
+
+        with transaction.atomic():
+            product = Product.objects.create(**validated_data)
+
+            # Create images
+            for index, image in enumerate(uploaded_images):
+                SalonMedia.objects.create(
+                    product=product, image=image, order=index, is_primary=(index == 0)
+                )
+
+            return product
+
+    def update(self, instance, validated_data):
+        uploaded_images = validated_data.pop("uploaded_images", None)
+
+        with transaction.atomic():
+            # Update product fields
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+            instance.save()
+
+            # If new images are uploaded, replace old ones
+            if uploaded_images is not None:
+                # Delete old images
+                SalonMedia.objects.filter(product=instance).delete()
+
+                # Create new images
+                for index, image in enumerate(uploaded_images):
+                    SalonMedia.objects.create(
+                        product=instance,
                         image=image,
                         order=index,
                         is_primary=(index == 0),

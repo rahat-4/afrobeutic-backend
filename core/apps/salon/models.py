@@ -97,7 +97,7 @@ class SalonMedia(BaseModel):
 
 class Service(BaseModel):
     name = models.CharField(max_length=255)
-    category = models.CharField(max_length=50)
+    category = models.CharField(max_length=255)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.CharField(max_length=300, blank=True, null=True)
 
@@ -108,7 +108,6 @@ class Service(BaseModel):
     salon = models.ForeignKey(
         Salon, on_delete=models.CASCADE, related_name="salon_services"
     )
-    image = models.ImageField(upload_to=get_salon_media_path)
 
     def __str__(self):
         return f"{self.name} - {self.salon.name}"
@@ -116,14 +115,14 @@ class Service(BaseModel):
 
 class Product(BaseModel):
     name = models.CharField(max_length=255)
-    category = models.CharField(max_length=50, choices=ServiceCategory.choices)
+    category = models.CharField(max_length=255)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.CharField(max_length=300, blank=True, null=True)
-    images = models.ManyToManyField(
-        SalonMedia, blank=True, related_name="product_images"
-    )
 
     # Fk
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, related_name="account_products"
+    )
     salon = models.ForeignKey(
         Salon, on_delete=models.CASCADE, related_name="salon_products"
     )
