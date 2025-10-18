@@ -14,13 +14,19 @@ from .choices import (
     ServiceCategory,
     DaysOfWeek,
     BookingStatus,
+    ChairStatus,
 )
-from .utils import get_salon_media_path
+from .utils import (
+    get_salon_media_path,
+    get_salon_logo_path,
+    get_salon_employee_image_path,
+)
 
 User = get_user_model()
 
 
 class Salon(BaseModel):
+    logo = models.ImageField(upload_to=get_salon_logo_path, blank=True, null=True)
     name = models.CharField(max_length=255)
     salon_type = models.CharField(
         max_length=10, choices=SalonType.choices, default=SalonType.MALE
@@ -44,7 +50,7 @@ class Salon(BaseModel):
     )
 
     def __str__(self):
-        return f"{self.name} - {self.city}"
+        return f"{self.name} - {self.city} - Owner: {self.account.name}"
 
 
 class OpeningHours(BaseModel):
@@ -131,11 +137,38 @@ class Product(BaseModel):
         return f"{self.name} - {self.salon.name}"
 
 
+class Employee(BaseModel):
+    employee_id = models.CharField(max_length=50)
+    name = models.CharField(max_length=100)
+    phone = PhoneNumberField()
+    designation = models.CharField(max_length=100)
+    image = models.ImageField(
+        upload_to=get_salon_employee_image_path, blank=True, null=True
+    )
+
+    # Fk
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, related_name="account_employees"
+    )
+    salon = models.ForeignKey(
+        Salon, on_delete=models.CASCADE, related_name="salon_employees"
+    )
+
+    class Meta:
+        unique_together = ["account", "salon", "employee_id"]
+
+
 class Chair(BaseModel):
     name = models.CharField(max_length=100)
     type = models.CharField(max_length=100)
+    status = models.CharField(
+        max_length=20, choices=ChairStatus.choices, default=ChairStatus.AVAILABLE
+    )
 
     # Fk
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, related_name="account_chairs"
+    )
     salon = models.ForeignKey(
         Salon, on_delete=models.CASCADE, related_name="salon_chairs"
     )
@@ -153,6 +186,9 @@ class Booking(BaseModel):
     notes = models.TextField(blank=True, null=True)
 
     # Fk
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, related_name="account_bookings"
+    )
     salon = models.ForeignKey(
         Salon, on_delete=models.CASCADE, related_name="salon_bookings"
     )

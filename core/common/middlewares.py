@@ -21,6 +21,9 @@ class CurrentAccountMiddleware(MiddlewareMixin):
         re.compile(r"^/api/token/?$"),
         re.compile(r"^/api/token/refresh/?$"),
         re.compile(r"^/api/token/verify/?$"),
+        # Media and static files
+        re.compile(r"^/media/.*$"),
+        re.compile(r"^/static/.*$"),
     ]
 
     def is_excluded_path(self, path):
@@ -33,7 +36,7 @@ class CurrentAccountMiddleware(MiddlewareMixin):
             request.account = None
             return
 
-        account_id = request.headers.get("X-ACCOUNT-ID")
+        account_id = request.headers.get("X-Account-Id")
         if account_id:
             try:
                 account = Account.objects.get(uid=account_id)

@@ -1,6 +1,7 @@
 from django.urls import path
 
 from ..views.salons import (
+    SalonEmployeeDetailView,
     SalonListView,
     SalonDetailView,
     SalonServiceListView,
@@ -8,9 +9,26 @@ from ..views.salons import (
     SalonProductListView,
     SalonProductDetailView,
     SalonEmployeeListView,
+    SalonChairListView,
+    SalonChairDetailView,
 )
 
 urlpatterns = [
+    path(
+        "/<uuid:salon_uid>/chairs/<uuid:chair_uid>",
+        SalonChairDetailView.as_view(),
+        name="salon.chair-detail",
+    ),
+    path(
+        "/<uuid:salon_uid>/chairs",
+        SalonChairListView.as_view(),
+        name="salon.chair-list",
+    ),
+    path(
+        "/<uuid:salon_uid>/employees/<uuid:employee_uid>",
+        SalonEmployeeDetailView.as_view(),
+        name="salon.employee-detail",
+    ),
     path(
         "/<uuid:salon_uid>/employees",
         SalonEmployeeListView.as_view(),

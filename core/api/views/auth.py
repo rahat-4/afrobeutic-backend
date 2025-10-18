@@ -162,7 +162,9 @@ class AcceptInvitationView(APIView):
             params = urlencode(
                 {"email": email, "role": invitation.role, "token": invitation.uid}
             )
-            return HttpResponseRedirect(f"http://localhost:3000/auth/signup?{params}")
+            return HttpResponseRedirect(
+                f"http://localhost:3000/auth/accept-invitation?{params}"
+            )
 
     def post(self, request, token):
         try:

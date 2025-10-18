@@ -44,3 +44,9 @@ class BookingStatus(models.TextChoices):
     RESCHEDULED = "RESCHEDULED", "Rescheduled"
     CANCELLED = "CANCELLED", "Cancelled"
     ABSENT = "ABSENT", "Absent"
+
+
+class ChairStatus(models.TextChoices):
+    AVAILABLE = "AVAILABLE", "Available"
+    MAINTENANCE = "MAINTENANCE", "Maintenance"
+    OUTOFORDER = "OUTOFORDER", "Out of Order"

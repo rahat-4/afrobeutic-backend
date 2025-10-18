@@ -11,12 +11,13 @@ User = get_user_model()
 
 
 class AccountMemberSerializer(serializers.ModelSerializer):
+    avatar = serializers.ImageField(source="user.avatar", read_only=True)
     name = serializers.CharField(source="user.get_full_name", read_only=True)
     email = serializers.EmailField(source="user.email", read_only=True)
 
     class Meta:
         model = AccountMembership
-        fields = ["uid", "name", "email", "role", "status"]
+        fields = ["uid", "avatar", "name", "email", "role", "status"]
         read_only_fields = ["uid", "name", "email"]
 
 

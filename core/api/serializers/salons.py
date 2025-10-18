@@ -6,7 +6,15 @@ from rest_framework import serializers
 from rest_framework.generics import get_object_or_404
 
 from apps.authentication.models import AccountMembership, AccountMembershipRole
-from apps.salon.models import Salon, OpeningHours, SalonMedia, Service, Product
+from apps.salon.models import (
+    Salon,
+    OpeningHours,
+    SalonMedia,
+    Service,
+    Product,
+    Chair,
+    Employee,
+)
 
 
 class OpeningHoursSerializer(serializers.ModelSerializer):
@@ -23,6 +31,7 @@ class SalonSerializer(serializers.ModelSerializer):
         model = Salon
         fields = [
             "uid",
+            "logo",
             "name",
             "salon_type",
             "email",
@@ -279,3 +288,41 @@ class SalonProductSerializer(serializers.ModelSerializer):
                     )
 
             return instance
+
+
+class EmployeeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Employee
+        fields = ["uid", "employee_id", "name", "phone", "designation", "image"]
+
+    def validate_employee_id(self, value):
+        """
+        Ensure employee_id is unique within the salon.
+        """
+        account = self.context["request"].account
+        salon_uid = self.context["view"].kwargs.get("salon_uid")
+        salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+        if self.instance:
+            # Exclude current instance when checking for uniqueness
+            if (
+                Employee.objects.filter(account=account, salon=salon, employee_id=value)
+                .exclude(uid=self.instance.uid)
+                .exists()
+            ):
+                raise serializers.ValidationError(
+                    "Employee ID must be unique within the salon."
+                )
+        else:
+            if Employee.objects.filter(
+                account=account, salon=salon, employee_id=value
+            ).exists():
+                raise serializers.ValidationError(
+                    "Employee ID must be unique within the salon."
+                )
+        return value
+
+
+class SalonChairSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Chair
+        fields = ["uid", "name", "type", "status"]
