@@ -16,8 +16,8 @@ class SalonType(models.TextChoices):
 
 
 class SalonStatus(models.TextChoices):
-    OPEN = "OPEN", "Open"
-    CLOSED = "CLOSED", "Closed"
+    ACTIVE = "ACTIVE", "Active"
+    INACTIVE = "INACTIVE", "Inactive"
 
 
 class ServiceCategory(models.TextChoices):

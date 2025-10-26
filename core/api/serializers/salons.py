@@ -14,6 +14,8 @@ from apps.salon.models import (
     Product,
     Chair,
     Employee,
+    Customer,
+    Booking,
 )
 
 
@@ -45,6 +47,8 @@ class SalonSerializer(serializers.ModelSerializer):
             "longitude",
             "status",
             "opening_hours",
+            "created_at",
+            "updated_at",
         ]
 
     def validate_status(self, value):
@@ -155,7 +159,7 @@ class SalonSerializer(serializers.ModelSerializer):
 class SalonMediaSerializer(serializers.ModelSerializer):
     class Meta:
         model = SalonMedia
-        fields = ["uid", "image", "order", "is_primary"]
+        fields = ["uid", "image", "created_at", "updated_at"]
 
 
 class SalonServiceSerializer(serializers.ModelSerializer):
@@ -174,6 +178,8 @@ class SalonServiceSerializer(serializers.ModelSerializer):
             "description",
             "images",
             "uploaded_images",
+            "created_at",
+            "updated_at",
         ]
 
     def validate_uploaded_images(self, value):
@@ -192,9 +198,7 @@ class SalonServiceSerializer(serializers.ModelSerializer):
 
             # Create images
             for index, image in enumerate(uploaded_images):
-                SalonMedia.objects.create(
-                    service=service, image=image, order=index, is_primary=(index == 0)
-                )
+                SalonMedia.objects.create(service=service, image=image)
 
             return service
 
@@ -214,12 +218,7 @@ class SalonServiceSerializer(serializers.ModelSerializer):
 
                 # Create new images
                 for index, image in enumerate(uploaded_images):
-                    SalonMedia.objects.create(
-                        service=instance,
-                        image=image,
-                        order=index,
-                        is_primary=(index == 0),
-                    )
+                    SalonMedia.objects.create(service=instance, image=image)
 
             return instance
 
@@ -240,6 +239,8 @@ class SalonProductSerializer(serializers.ModelSerializer):
             "description",
             "images",
             "uploaded_images",
+            "created_at",
+            "updated_at",
         ]
 
     def validate_uploaded_images(self, value):
@@ -258,9 +259,7 @@ class SalonProductSerializer(serializers.ModelSerializer):
 
             # Create images
             for index, image in enumerate(uploaded_images):
-                SalonMedia.objects.create(
-                    product=product, image=image, order=index, is_primary=(index == 0)
-                )
+                SalonMedia.objects.create(product=product, image=image)
 
             return product
 
@@ -280,12 +279,7 @@ class SalonProductSerializer(serializers.ModelSerializer):
 
                 # Create new images
                 for index, image in enumerate(uploaded_images):
-                    SalonMedia.objects.create(
-                        product=instance,
-                        image=image,
-                        order=index,
-                        is_primary=(index == 0),
-                    )
+                    SalonMedia.objects.create(product=instance, image=image)
 
             return instance
 
@@ -293,7 +287,16 @@ class SalonProductSerializer(serializers.ModelSerializer):
 class EmployeeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
-        fields = ["uid", "employee_id", "name", "phone", "designation", "image"]
+        fields = [
+            "uid",
+            "employee_id",
+            "name",
+            "phone",
+            "designation",
+            "image",
+            "created_at",
+            "updated_at",
+        ]
 
     def validate_employee_id(self, value):
         """
@@ -325,4 +328,170 @@ class EmployeeSerializer(serializers.ModelSerializer):
 class SalonChairSerializer(serializers.ModelSerializer):
     class Meta:
         model = Chair
-        fields = ["uid", "name", "type", "status"]
+        fields = ["uid", "name", "type", "status", "created_at", "updated_at"]
+
+
+class SalonCustomerSlimSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = ["uid", "name", "phone", "email", "created_at", "updated_at"]
+
+
+class BookingImageSlimSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SalonMedia
+        fields = ["uid", "image", "created_at", "updated_at"]
+
+
+class BookingServicesSlimSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Service
+        fields = [
+            "uid",
+            "name",
+            "category",
+            "price",
+            "description",
+            "service_duration",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class BookingProductsSlimSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = [
+            "uid",
+            "name",
+            "category",
+            "price",
+            "description",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class SalonChairBookingSerializer(serializers.ModelSerializer):
+    customer = SalonCustomerSlimSerializer()
+    services = serializers.SlugRelatedField(
+        queryset=Service.objects.all(), many=True, slug_field="uid"
+    )
+    products = serializers.SlugRelatedField(
+        queryset=Product.objects.all(),
+        many=True,
+        slug_field="uid",
+        required=False,
+        allow_null=True,
+    )
+    employee = serializers.SlugRelatedField(
+        queryset=Employee.objects.all(),
+        slug_field="uid",
+        required=False,
+        allow_null=True,
+    )
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+
+        rep["services"] = BookingServicesSlimSerializer(
+            instance.services.all(), many=True
+        ).data
+
+        rep["products"] = BookingProductsSlimSerializer(
+            instance.products.all(), many=True
+        ).data
+
+        rep["employee"] = (
+            {"uid": instance.employee.uid, "name": instance.employee.name}
+            if instance.employee
+            else None
+        )
+
+        return rep
+
+    class Meta:
+        model = Booking
+        fields = [
+            "uid",
+            "customer",
+            "booking_id",
+            "booking_date",
+            "booking_time",
+            "status",
+            "booking_duration",
+            "notes",
+            "services",
+            "products",
+            "employee",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["booking_duration", "booking_id"]
+
+    def create(self, validated_data):
+        customer = validated_data.pop("customer")
+        services = validated_data.pop("services", [])
+        products = validated_data.pop("products", [])
+        employee = validated_data.pop("employee", None)
+
+        with transaction.atomic():
+            customer_obj, _ = Customer.objects.get_or_create(
+                account=validated_data["account"],
+                phone=customer["phone"],
+                defaults={"name": customer["name"], "salon": validated_data["salon"]},
+            )
+            validated_data["customer"] = customer_obj
+
+            total_duration = sum(
+                (service.service_duration for service in services), timedelta()
+            )
+            validated_data["booking_duration"] = total_duration
+
+            if employee:
+                validated_data["employee"] = employee
+
+            booking = Booking.objects.create(**validated_data)
+            booking.services.set(services)
+            if products:
+                booking.products.set(products)
+
+            return booking
+
+
+class SalonChairSlimSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Chair
+        fields = ["uid", "name", "type", "status", "created_at", "updated_at"]
+
+
+class SalonBookingSerializer(serializers.ModelSerializer):
+    customer = SalonCustomerSlimSerializer()
+    chair = SalonChairSlimSerializer()
+    services = BookingServicesSlimSerializer(many=True, read_only=True)
+    products = BookingProductsSlimSerializer(many=True, read_only=True)
+    employee = serializers.SerializerMethodField()
+
+    def get_employee(self, obj):
+        if obj.employee:
+            return {"uid": obj.employee.uid, "name": obj.employee.name}
+        return None
+
+    class Meta:
+        model = Booking
+        fields = [
+            "uid",
+            "customer",
+            "booking_id",
+            "booking_date",
+            "booking_time",
+            "status",
+            "booking_duration",
+            "notes",
+            "chair",
+            "services",
+            "products",
+            "employee",
+            "created_at",
+            "updated_at",
+        ]

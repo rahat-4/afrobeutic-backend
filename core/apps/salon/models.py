@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.db import models
 from django.contrib.auth import get_user_model
 
@@ -11,7 +13,6 @@ from apps.authentication.models import Account
 from .choices import (
     SalonType,
     SalonStatus,
-    ServiceCategory,
     DaysOfWeek,
     BookingStatus,
     ChairStatus,
@@ -20,6 +21,7 @@ from .utils import (
     get_salon_media_path,
     get_salon_logo_path,
     get_salon_employee_image_path,
+    unique_booking_id_generator,
 )
 
 User = get_user_model()
@@ -41,7 +43,7 @@ class Salon(BaseModel):
     latitude = models.FloatField()
     longitude = models.FloatField()
     status = models.CharField(
-        max_length=10, choices=SalonStatus.choices, default=SalonStatus.OPEN
+        max_length=10, choices=SalonStatus.choices, default=SalonStatus.ACTIVE
     )
 
     # Fk
@@ -85,20 +87,20 @@ class SalonMedia(BaseModel):
         null=True,
         blank=True,
     )
+    booking = models.ForeignKey(
+        "Booking",
+        on_delete=models.SET_NULL,
+        related_name="booking_images",
+        null=True,
+        blank=True,
+    )
     image = models.ImageField(upload_to=get_salon_media_path)
-    order = models.PositiveIntegerField(default=0)
-    is_primary = models.BooleanField(default=False)
 
     class Meta:
-        ordering = ["order", "-created_at"]
+        ordering = ["-created_at"]
 
     def __str__(self):
-        name = (
-            self.service.name
-            if self.service
-            else (self.product.name if self.product else "No media")
-        )
-        return f"Media for {name}"
+        return f"Media {self.uid}"
 
 
 class Service(BaseModel):
@@ -106,6 +108,7 @@ class Service(BaseModel):
     category = models.CharField(max_length=255)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.CharField(max_length=300, blank=True, null=True)
+    service_duration = models.DurationField(default=timedelta(minutes=30))
 
     # Fk
     account = models.ForeignKey(
@@ -116,7 +119,7 @@ class Service(BaseModel):
     )
 
     def __str__(self):
-        return f"{self.name} - {self.salon.name}"
+        return f"UID: {self.uid} - {self.name} - {self.salon.name}"
 
 
 class Product(BaseModel):
@@ -134,7 +137,7 @@ class Product(BaseModel):
     )
 
     def __str__(self):
-        return f"{self.name} - {self.salon.name}"
+        return f"UID: {self.uid} - {self.name} - {self.salon.name}"
 
 
 class Employee(BaseModel):
@@ -157,6 +160,9 @@ class Employee(BaseModel):
     class Meta:
         unique_together = ["account", "salon", "employee_id"]
 
+    def __str__(self):
+        return f"UID{self.uid} - {self.name} - {self.salon.name}"
+
 
 class Chair(BaseModel):
     name = models.CharField(max_length=100)
@@ -177,27 +183,81 @@ class Chair(BaseModel):
         return f"{self.name} - {self.salon.name}"
 
 
+class Customer(BaseModel):
+    name = models.CharField(max_length=100)
+    phone = PhoneNumberField()
+
+    # Fk
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, related_name="account_customers"
+    )
+    salon = models.ForeignKey(
+        Salon, on_delete=models.CASCADE, related_name="salon_customers"
+    )
+
+    class Meta:
+        unique_together = ["account", "phone"]
+
+    def __str__(self):
+        return f"{self.name} - {self.salon.name}"
+
+
 class Booking(BaseModel):
+    booking_id = models.CharField(max_length=8)
     booking_date = models.DateField()
     booking_time = models.TimeField()
     status = models.CharField(
         max_length=15, choices=BookingStatus.choices, default=BookingStatus.PLACED
     )
     notes = models.TextField(blank=True, null=True)
+    booking_duration = models.DurationField(default=timedelta(minutes=30))
+    cancelled_reason = models.TextField(blank=True, null=True)
 
     # Fk
+    cancelled_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        related_name="user_cancelled_bookings",
+        null=True,
+        blank=True,
+    )
     account = models.ForeignKey(
         Account, on_delete=models.CASCADE, related_name="account_bookings"
     )
     salon = models.ForeignKey(
         Salon, on_delete=models.CASCADE, related_name="salon_bookings"
     )
-    service = models.ForeignKey(
-        Service, on_delete=models.CASCADE, related_name="service_bookings"
+    customer = models.ForeignKey(
+        Customer, on_delete=models.CASCADE, related_name="customer_bookings"
     )
     chair = models.ForeignKey(
         Chair, on_delete=models.CASCADE, related_name="chair_bookings"
     )
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        related_name="employee_bookings",
+        null=True,
+        blank=True,
+    )
+
+    # M2M
+    services = models.ManyToManyField(Service, related_name="service_bookings")
+    products = models.ManyToManyField(
+        Product, related_name="product_bookings", blank=True
+    )
+
+    class Meta:
+        ordering = ["-booking_date", "-booking_time"]
+        indexes = [
+            models.Index(fields=["booking_date", "booking_time"]),
+            models.Index(fields=["salon", "status"]),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self.booking_id:
+            self.booking_id = unique_booking_id_generator(self)
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Booking for {self.customer_name} at {self.salon.name} on {self.appointment_date}"
+        return f"Booking {self.uid} - {self.customer.name} on {self.booking_date} at {self.booking_time}"

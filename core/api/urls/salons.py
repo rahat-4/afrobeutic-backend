@@ -11,9 +11,23 @@ from ..views.salons import (
     SalonEmployeeListView,
     SalonChairListView,
     SalonChairDetailView,
+    SalonChairBookingListView,
+    SalonChairBookingDetailView,
+    SalonBookingListView,
+    SalonBookingDetailView,
 )
 
 urlpatterns = [
+    path(
+        "/<uuid:salon_uid>/chairs/<uuid:chair_uid>/bookings/<uuid:booking_uid>",
+        SalonChairBookingDetailView.as_view(),
+        name="salon.chair-booking-detail",
+    ),
+    path(
+        "/<uuid:salon_uid>/chairs/<uuid:chair_uid>/bookings",
+        SalonChairBookingListView.as_view(),
+        name="salon.chair-booking-list",
+    ),
     path(
         "/<uuid:salon_uid>/chairs/<uuid:chair_uid>",
         SalonChairDetailView.as_view(),
@@ -23,6 +37,16 @@ urlpatterns = [
         "/<uuid:salon_uid>/chairs",
         SalonChairListView.as_view(),
         name="salon.chair-list",
+    ),
+    path(
+        "/<uuid:salon_uid>/bookings/<uuid:booking_uid>",
+        SalonBookingDetailView.as_view(),
+        name="salon.booking-detail",
+    ),
+    path(
+        "/<uuid:salon_uid>/bookings",
+        SalonBookingListView.as_view(),
+        name="salon.booking-list",
     ),
     path(
         "/<uuid:salon_uid>/employees/<uuid:employee_uid>",

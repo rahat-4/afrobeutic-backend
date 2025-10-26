@@ -1,8 +1,6 @@
 from datetime import timedelta
-from urllib.parse import urlencode
 
 from django.contrib.auth import get_user_model
-from django.http import HttpResponseRedirect
 from django.utils import timezone
 
 from rest_framework import status
@@ -10,12 +8,9 @@ from rest_framework.generics import ListAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from apps.authentication.models import Account, AccountMembership, AccountInvitation
+from apps.authentication.models import Account, AccountMembership
 
-from apps.authentication.emails import (
-    send_verification_email,
-    send_account_invitation_email,
-)
+from apps.authentication.emails import send_account_invitation_email
 
 from common.permissions import IsOwner, IsOwnerOrAdmin, IsOwnerOrAdminOrStaff
 
