@@ -18,6 +18,8 @@ from apps.salon.models import (
     Booking,
 )
 
+from common.serializers import CustomerSlimSerializer
+
 
 class OpeningHoursSerializer(serializers.ModelSerializer):
 
@@ -508,3 +510,71 @@ class SalonBookingSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+
+class SalonLookBookSerializer(serializers.ModelSerializer):
+    images = serializers.ListField(
+        child=serializers.ImageField(), write_only=True, required=False
+    )
+    customer = CustomerSlimSerializer(read_only=True)
+
+    class Meta:
+        model = Booking
+        fields = [
+            "uid",
+            "booking_id",
+            "customer",
+            "completed_at",
+            "images",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "uid",
+            "booking_id",
+            "customer",
+            "completed_at",
+            "created_at",
+            "updated_at",
+        ]
+
+    def validate_images(self, value):
+        """
+        Ensure at least one image is provided.
+        """
+        if len(value) == 0:
+            raise serializers.ValidationError("At least one image must be provided.")
+
+        if len(value) > 3:
+            raise serializers.ValidationError(
+                "A maximum of three images can be uploaded."
+            )
+        return value
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        request = self.context.get("request")
+        images_qs = SalonMedia.objects.filter(booking=instance)
+        rep["images"] = [
+            {
+                **BookingImageSlimSerializer(img, context={"request": request}).data,
+                "image": (
+                    request.build_absolute_uri(img.image.url)
+                    if request
+                    else img.image.url
+                ),
+            }
+            for img in images_qs
+        ]
+        return rep
+
+    def update(self, instance, validated_data):
+        images = validated_data.pop("images", [])
+
+        with transaction.atomic():
+            SalonMedia.objects.filter(booking=instance).delete()
+
+            for image in images:
+                SalonMedia.objects.create(booking=instance, image=image)
+
+            return instance

@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 from django_countries.fields import CountryField
 from phonenumber_field.modelfields import PhoneNumberField
@@ -228,6 +229,7 @@ class Booking(BaseModel):
     notes = models.TextField(blank=True, null=True)
     booking_duration = models.DurationField(default=timedelta(minutes=30))
     cancelled_reason = models.TextField(blank=True, null=True)
+    completed_at = models.DateTimeField(blank=True, null=True)
 
     # Fk
     cancelled_by = models.ForeignKey(
@@ -273,6 +275,10 @@ class Booking(BaseModel):
     def save(self, *args, **kwargs):
         if not self.booking_id:
             self.booking_id = unique_booking_id_generator(self)
+
+        if self.status == BookingStatus.COMPLETED and not self.completed_at:
+            self.completed_at = timezone.now()
+
         super().save(*args, **kwargs)
 
     def __str__(self):

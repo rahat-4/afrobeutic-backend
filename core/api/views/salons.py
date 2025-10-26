@@ -10,7 +10,7 @@ from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.authentication.models import AccountMembership
-
+from apps.salon.choices import BookingStatus
 from apps.salon.models import (
     Booking,
     Chair,
@@ -34,6 +34,7 @@ from ..serializers.salons import (
     EmployeeSerializer,
     SalonChairBookingSerializer,
     SalonBookingSerializer,
+    SalonLookBookSerializer,
 )
 
 
@@ -450,4 +451,60 @@ class SalonBookingDetailView(RetrieveUpdateAPIView):
             salon__uid=salon_uid,
             account=account,
             account__members__user=user,
+        )
+
+
+class SalonLookBookListView(ListAPIView):
+    serializer_class = SalonLookBookSerializer
+    permission_classes = [IsOwnerOrAdminOrStaff]
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    ordering_fields = ["created_at", "booking_date"]
+    ordering = ["-created_at"]
+    search_fields = ["customer__name", "customer__phone", "booking_id"]
+
+    def get_queryset(self):
+        user = self.request.user
+        account = self.request.account
+        salon_uid = self.kwargs.get("salon_uid")
+
+        queryset = Booking.objects.filter(
+            account=account,
+            salon__uid=salon_uid,
+            account__members__user=user,
+            status=BookingStatus.COMPLETED,
+        )
+
+        return queryset
+
+
+class SalonLookBookDetailView(RetrieveUpdateAPIView):
+    serializer_class = SalonLookBookSerializer
+    lookup_field = "uid"
+    lookup_url_kwarg = "lookbook_uid"
+
+    def get_permissions(self):
+        if self.request.method in ["PUT", "PATCH"]:
+            self.permission_classes = [IsOwnerOrAdmin]
+        else:
+            self.permission_classes = [IsOwnerOrAdminOrStaff]
+
+        return super().get_permissions()
+
+    def get_object(self):
+        user = self.request.user
+        account = self.request.account
+        salon_uid = self.kwargs.get("salon_uid")
+        lookbook_uid = self.kwargs.get("lookbook_uid")
+
+        return get_object_or_404(
+            Booking,
+            uid=lookbook_uid,
+            salon__uid=salon_uid,
+            account=account,
+            account__members__user=user,
+            status=BookingStatus.COMPLETED,
         )
