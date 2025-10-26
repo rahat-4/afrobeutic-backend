@@ -162,10 +162,22 @@ class SalonMediaSerializer(serializers.ModelSerializer):
         fields = ["uid", "image", "created_at", "updated_at"]
 
 
+class SalonEmployeeSlimSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Employee
+        fields = ["uid", "employee_id", "name", "phone", "designation", "image"]
+
+
 class SalonServiceSerializer(serializers.ModelSerializer):
     images = SalonMediaSerializer(many=True, read_only=True, source="service_images")
     uploaded_images = serializers.ListField(
         child=serializers.ImageField(), write_only=True, required=False
+    )
+    assign_employees = serializers.SlugRelatedField(
+        queryset=Employee.objects.all(),
+        many=True,
+        slug_field="uid",
+        required=False,
     )
 
     class Meta:
@@ -178,6 +190,11 @@ class SalonServiceSerializer(serializers.ModelSerializer):
             "description",
             "images",
             "uploaded_images",
+            "service_duration",
+            "available_time_slot",
+            "gender_specific",
+            "discount_percentage",
+            "assign_employees",
             "created_at",
             "updated_at",
         ]
@@ -189,6 +206,14 @@ class SalonServiceSerializer(serializers.ModelSerializer):
         if len(value) > 2:
             raise serializers.ValidationError("You can upload a maximum of 2 images.")
         return value
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep["assign_employees"] = SalonEmployeeSlimSerializer(
+            instance.assign_employees.all(), many=True
+        ).data
+
+        return rep
 
     def create(self, validated_data):
         uploaded_images = validated_data.pop("uploaded_images", [])
@@ -204,12 +229,16 @@ class SalonServiceSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         uploaded_images = validated_data.pop("uploaded_images", None)
+        assign_employees = validated_data.pop("assign_employees", [])
 
         with transaction.atomic():
             # Update service fields
             for attr, value in validated_data.items():
                 setattr(instance, attr, value)
             instance.save()
+
+            if assign_employees != []:
+                instance.assign_employees.set(assign_employees)
 
             # If new images are uploaded, replace old ones
             if uploaded_images is not None:

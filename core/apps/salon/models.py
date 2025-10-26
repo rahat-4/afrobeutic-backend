@@ -16,6 +16,7 @@ from .choices import (
     DaysOfWeek,
     BookingStatus,
     ChairStatus,
+    ServiceTimeSlot,
 )
 from .utils import (
     get_salon_media_path,
@@ -109,6 +110,17 @@ class Service(BaseModel):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.CharField(max_length=300, blank=True, null=True)
     service_duration = models.DurationField(default=timedelta(minutes=30))
+    available_time_slot = models.CharField(
+        max_length=20,
+        choices=ServiceTimeSlot.choices,
+        default=ServiceTimeSlot.ANYTIME,
+    )
+    gender_specific = models.CharField(
+        max_length=10, choices=SalonType.choices, default=SalonType.UNISEX
+    )
+    discount_percentage = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0.00
+    )
 
     # Fk
     account = models.ForeignKey(
@@ -116,6 +128,9 @@ class Service(BaseModel):
     )
     salon = models.ForeignKey(
         Salon, on_delete=models.CASCADE, related_name="salon_services"
+    )
+    assign_employees = models.ManyToManyField(
+        "Employee", related_name="employee_services", blank=True
     )
 
     def __str__(self):

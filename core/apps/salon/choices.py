@@ -1,52 +1,49 @@
 from django.db import models
-
-
-class MemberRole(models.TextChoices):
-    MANAGEMENT_ADMIN = "MANAGEMENT_ADMIN", "Management Admin"
-    MANAGEMENT_STAFF = "MANAGEMENT_STAFF", "Management Staff"
-    OWNER = "OWNER", "Owner"
-    ADMIN = "ADMIN", "Admin"
-    STAFF = "STAFF", "Staff"
+from django.utils.translation import gettext_lazy as _
 
 
 class SalonType(models.TextChoices):
-    UNISEX = "UNISEX", "Unisex"
-    MALE = "MALE", "Male"
-    FEMALE = "FEMALE", "Female"
+    UNISEX = "UNISEX", _("Unisex")
+    MALE = "MALE", _("Male")
+    FEMALE = "FEMALE", _("Female")
 
 
 class SalonStatus(models.TextChoices):
-    ACTIVE = "ACTIVE", "Active"
-    INACTIVE = "INACTIVE", "Inactive"
+    ACTIVE = "ACTIVE", _("Active")
+    INACTIVE = "INACTIVE", _("Inactive")
 
 
-class ServiceCategory(models.TextChoices):
-    pass
+class ServiceTimeSlot(models.TextChoices):
+    MORNING = "MORNING", _("Morning")
+    AFTERNOON = "AFTERNOON", _("Afternoon")
+    EVENING = "EVENING", _("Evening")
+    AFTER_EVENING = "AFTER_EVENING", _("After Evening")
+    ANYTIME = "ANYTIME", _("Anytime")
 
 
 class DaysOfWeek(models.TextChoices):
-    MONDAY = "MONDAY", "Monday"
-    TUESDAY = "TUESDAY", "Tuesday"
-    WEDNESDAY = "WEDNESDAY", "Wednesday"
-    THURSDAY = "THURSDAY", "Thursday"
-    FRIDAY = "FRIDAY", "Friday"
-    SATURDAY = "SATURDAY", "Saturday"
-    SUNDAY = "SUNDAY", "Sunday"
+    MONDAY = "MONDAY", _("Monday")
+    TUESDAY = "TUESDAY", _("Tuesday")
+    WEDNESDAY = "WEDNESDAY", _("Wednesday")
+    THURSDAY = "THURSDAY", _("Thursday")
+    FRIDAY = "FRIDAY", _("Friday")
+    SATURDAY = "SATURDAY", _("Saturday")
+    SUNDAY = "SUNDAY", _("Sunday")
 
     def __str__(self):
         return self.label
 
 
 class BookingStatus(models.TextChoices):
-    PLACED = "PLACED", "Placed"
-    INPROGRESS = "INPROGRESS", "In-progress"
-    COMPLETED = "COMPLETED", "Completed"
-    RESCHEDULED = "RESCHEDULED", "Rescheduled"
-    CANCELLED = "CANCELLED", "Cancelled"
-    ABSENT = "ABSENT", "Absent"
+    PLACED = "PLACED", _("Placed")
+    INPROGRESS = "INPROGRESS", _("In-progress")
+    COMPLETED = "COMPLETED", _("Completed")
+    RESCHEDULED = "RESCHEDULED", _("Rescheduled")
+    CANCELLED = "CANCELLED", _("Cancelled")
+    ABSENT = "ABSENT", _("Absent")
 
 
 class ChairStatus(models.TextChoices):
-    AVAILABLE = "AVAILABLE", "Available"
-    MAINTENANCE = "MAINTENANCE", "Maintenance"
-    OUTOFORDER = "OUTOFORDER", "Out of Order"
+    AVAILABLE = "AVAILABLE", _("Available")
+    MAINTENANCE = "MAINTENANCE", _("Maintenance")
+    OUTOFORDER = "OUTOFORDER", _("Out of Order")
