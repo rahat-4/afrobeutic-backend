@@ -23,6 +23,7 @@ from .utils import (
     get_salon_logo_path,
     get_salon_employee_image_path,
     unique_booking_id_generator,
+    validate_available_time_slots,
 )
 
 User = get_user_model()
@@ -110,10 +111,10 @@ class Service(BaseModel):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.CharField(max_length=300, blank=True, null=True)
     service_duration = models.DurationField(default=timedelta(minutes=30))
-    available_time_slot = models.CharField(
-        max_length=20,
-        choices=ServiceTimeSlot.choices,
-        default=ServiceTimeSlot.ANYTIME,
+    available_time_slots = models.JSONField(
+        default=list,
+        validators=[validate_available_time_slots],
+        help_text="List of available time slots. Example: ['MORNING', 'AFTERNOON']",
     )
     gender_specific = models.CharField(
         max_length=10, choices=SalonType.choices, default=SalonType.UNISEX

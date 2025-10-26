@@ -21,6 +21,7 @@ from apps.salon.models import (
 )
 
 from common.permissions import (
+    IsOwner,
     IsOwnerOrAdmin,
     IsOwnerOrAdminOrStaff,
 )
@@ -69,6 +70,8 @@ class SalonDetailView(RetrieveUpdateDestroyAPIView):
     def get_permissions(self):
         if self.request.method in ["PUT", "PATCH"]:
             self.permission_classes = [IsOwnerOrAdmin]
+        elif self.request.method == "DELETE":
+            self.permission_classes = [IsOwner]
         else:
             self.permission_classes = [IsOwnerOrAdminOrStaff]
 

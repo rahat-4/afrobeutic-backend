@@ -51,23 +51,6 @@ class SalonSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def validate_status(self, value):
-        if self.instance and self.instance.status != value:
-            # Status is being changed
-            request = self.context.get("request")
-            if request and request.user:
-                is_owner = AccountMembership.objects.filter(
-                    user=request.user,
-                    account=self.instance.account,
-                    role=AccountMembershipRole.OWNER,
-                ).exists()
-
-                if not is_owner:
-                    raise serializers.ValidationError(
-                        "Only account owners can change the salon status."
-                    )
-        return value
-
     def validate(self, attrs):
         opening_hours = attrs.get("opening_hours", [])
         errors = {}
@@ -191,7 +174,7 @@ class SalonServiceSerializer(serializers.ModelSerializer):
             "images",
             "uploaded_images",
             "service_duration",
-            "available_time_slot",
+            "available_time_slots",
             "gender_specific",
             "discount_percentage",
             "assign_employees",
@@ -217,6 +200,7 @@ class SalonServiceSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         uploaded_images = validated_data.pop("uploaded_images", [])
+        assign_employees = validated_data.pop("assign_employees", [])
 
         with transaction.atomic():
             service = Service.objects.create(**validated_data)
@@ -363,7 +347,7 @@ class SalonChairSerializer(serializers.ModelSerializer):
 class SalonCustomerSlimSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = ["uid", "name", "phone", "email", "created_at", "updated_at"]
+        fields = ["uid", "name", "phone", "created_at", "updated_at"]
 
 
 class BookingImageSlimSerializer(serializers.ModelSerializer):
