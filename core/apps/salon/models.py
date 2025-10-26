@@ -228,7 +228,7 @@ class Booking(BaseModel):
     )
     notes = models.TextField(blank=True, null=True)
     booking_duration = models.DurationField(default=timedelta(minutes=30))
-    cancelled_reason = models.TextField(blank=True, null=True)
+    cancellation_reason = models.TextField(blank=True, null=True)
     completed_at = models.DateTimeField(blank=True, null=True)
 
     # Fk

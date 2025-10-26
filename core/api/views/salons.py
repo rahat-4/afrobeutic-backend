@@ -407,10 +407,18 @@ class SalonChairBookingDetailView(RetrieveAPIView):
         )
 
 
-# TODO: We will change later
 class SalonBookingListView(ListAPIView):
     serializer_class = SalonBookingSerializer
     permission_classes = [IsOwnerOrAdminOrStaff]
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_fields = ["booking_date", "status"]
+    search_fields = ["customer__name", "customer__phone", "booking_id"]
+    ordering_fields = ["created_at", "booking_date"]
+    ordering = ["-created_at"]
 
     def get_queryset(self):
         user = self.request.user
@@ -432,7 +440,7 @@ class SalonBookingDetailView(RetrieveUpdateAPIView):
     lookup_url_kwarg = "booking_uid"
 
     def get_permissions(self):
-        if self.request.method in ["PUT", "PATCH", "DELETE"]:
+        if self.request.method in ["PUT", "PATCH"]:
             self.permission_classes = [IsOwnerOrAdmin]
         else:
             self.permission_classes = [IsOwnerOrAdminOrStaff]
