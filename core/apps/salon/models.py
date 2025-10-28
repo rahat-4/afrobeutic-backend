@@ -7,7 +7,7 @@ from django.utils import timezone
 from django_countries.fields import CountryField
 from phonenumber_field.modelfields import PhoneNumberField
 
-from common.models import BaseModel
+from common.models import BaseModel, Category
 
 from apps.authentication.models import Account
 
@@ -17,7 +17,6 @@ from .choices import (
     DaysOfWeek,
     BookingStatus,
     ChairStatus,
-    ServiceTimeSlot,
 )
 from .utils import (
     get_salon_media_path,
@@ -43,8 +42,7 @@ class Salon(BaseModel):
     city = models.CharField(max_length=100)
     postal_code = models.CharField(max_length=20)
     country = CountryField()
-    latitude = models.FloatField()
-    longitude = models.FloatField()
+    address = models.URLField(blank=True, null=True)
     status = models.CharField(
         max_length=10, choices=SalonStatus.choices, default=SalonStatus.ACTIVE
     )
@@ -108,7 +106,12 @@ class SalonMedia(BaseModel):
 
 class Service(BaseModel):
     name = models.CharField(max_length=255)
-    category = models.CharField(max_length=255)
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.PROTECT,
+        limit_choices_to={"category_type": "SERVICE"},
+        related_name="service_category",
+    )
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.CharField(max_length=300, blank=True, null=True)
     service_duration = models.DurationField(default=timedelta(minutes=30))
@@ -141,7 +144,12 @@ class Service(BaseModel):
 
 class Product(BaseModel):
     name = models.CharField(max_length=255)
-    category = models.CharField(max_length=255)
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.PROTECT,
+        limit_choices_to={"category_type": "PRODUCT"},
+        related_name="product_category",
+    )
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.CharField(max_length=300, blank=True, null=True)
 
@@ -161,7 +169,12 @@ class Employee(BaseModel):
     employee_id = models.CharField(max_length=50)
     name = models.CharField(max_length=100)
     phone = PhoneNumberField()
-    designation = models.CharField(max_length=100)
+    designation = models.ForeignKey(
+        Category,
+        on_delete=models.PROTECT,
+        limit_choices_to={"category_type": "EMPLOYEE"},
+        related_name="employee_designation",
+    )
     image = models.ImageField(
         upload_to=get_salon_employee_image_path, blank=True, null=True
     )
@@ -183,7 +196,12 @@ class Employee(BaseModel):
 
 class Chair(BaseModel):
     name = models.CharField(max_length=100)
-    type = models.CharField(max_length=100)
+    type = models.ForeignKey(
+        Category,
+        on_delete=models.PROTECT,
+        limit_choices_to={"category_type": "CHAIR"},
+        related_name="chair_type",
+    )
     status = models.CharField(
         max_length=20, choices=ChairStatus.choices, default=ChairStatus.AVAILABLE
     )

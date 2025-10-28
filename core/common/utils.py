@@ -1,6 +1,10 @@
+from datetime import timedelta, datetime, timezone as dt_timezone
+
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils import timezone
-from datetime import timedelta, datetime, timezone as dt_timezone
+
+from .models import Category
+from .choices import CategoryType
 
 
 class EmailVerificationTokenGenerator(PasswordResetTokenGenerator):
@@ -36,3 +40,12 @@ class EmailVerificationTokenGenerator(PasswordResetTokenGenerator):
 
 
 email_token_generator = EmailVerificationTokenGenerator(expiry_minutes=60)
+
+
+def get_or_create_category(name, account):
+    """Retrieve existing or create new category dynamically."""
+    name = name.strip().title()
+    category, _ = Category.objects.get_or_create(
+        name=name, account=account, category_type=CategoryType.SERVICE, defaults={}
+    )
+    return category

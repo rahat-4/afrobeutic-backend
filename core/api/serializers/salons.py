@@ -19,11 +19,14 @@ from apps.salon.models import (
     Booking,
 )
 
+from common.choices import CategoryType
 from common.serializers import (
     CustomerSlimSerializer,
     EmployeeSlimSerializer,
     UserSlimSerializer,
 )
+from common.models import Category
+from common.utils import get_or_create_category
 
 
 class OpeningHoursSerializer(serializers.ModelSerializer):
@@ -50,8 +53,7 @@ class SalonSerializer(serializers.ModelSerializer):
             "city",
             "postal_code",
             "country",
-            "latitude",
-            "longitude",
+            "address",
             "status",
             "opening_hours",
             "created_at",
@@ -163,6 +165,7 @@ class SalonServiceSerializer(serializers.ModelSerializer):
         slug_field="uid",
         required=False,
     )
+    category = serializers.CharField(write_only=True)
 
     class Meta:
         model = Service
@@ -196,14 +199,22 @@ class SalonServiceSerializer(serializers.ModelSerializer):
         rep["assign_employees"] = EmployeeSlimSerializer(
             instance.assign_employees.all(), many=True
         ).data
+        rep["category"] = instance.category.name
 
         return rep
 
     def create(self, validated_data):
         uploaded_images = validated_data.pop("uploaded_images", [])
         assign_employees = validated_data.pop("assign_employees", [])
+        category_name = validated_data.pop("category")
+
+        account = self.context["request"].account
 
         with transaction.atomic():
+            # Handle category
+            category = get_or_create_category(category_name, account)
+            validated_data["category"] = category
+
             service = Service.objects.create(**validated_data)
 
             # Create images
@@ -215,8 +226,15 @@ class SalonServiceSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         uploaded_images = validated_data.pop("uploaded_images", None)
         assign_employees = validated_data.pop("assign_employees", [])
+        category_name = validated_data.pop("category", None)
+        account = instance.account
 
         with transaction.atomic():
+            # Handle category
+            if category_name:
+                category = get_or_create_category(category_name, account)
+                instance.category = category
+
             # Update service fields
             for attr, value in validated_data.items():
                 setattr(instance, attr, value)
@@ -242,6 +260,7 @@ class SalonProductSerializer(serializers.ModelSerializer):
     uploaded_images = serializers.ListField(
         child=serializers.ImageField(), write_only=True, required=False
     )
+    category = serializers.CharField(write_only=True)
 
     class Meta:
         model = Product
@@ -257,6 +276,11 @@ class SalonProductSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep["category"] = instance.category.name
+        return rep
+
     def validate_uploaded_images(self, value):
         """
         Ensure no more than 2 images are uploaded.
@@ -267,8 +291,14 @@ class SalonProductSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         uploaded_images = validated_data.pop("uploaded_images", [])
+        category_name = validated_data.pop("category")
+
+        account = self.context["request"].account
 
         with transaction.atomic():
+            # Handle category
+            category = get_or_create_category(category_name, account)
+            validated_data["category"] = category
             product = Product.objects.create(**validated_data)
 
             # Create images
@@ -279,8 +309,15 @@ class SalonProductSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         uploaded_images = validated_data.pop("uploaded_images", None)
+        category_name = validated_data.pop("category", None)
+        account = instance.account
 
         with transaction.atomic():
+            # Handle category
+            if category_name:
+                category = get_or_create_category(category_name, account)
+                instance.category = category
+
             # Update product fields
             for attr, value in validated_data.items():
                 setattr(instance, attr, value)
@@ -299,6 +336,8 @@ class SalonProductSerializer(serializers.ModelSerializer):
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
+    designation = serializers.CharField(write_only=True)
+
     class Meta:
         model = Employee
         fields = [
@@ -338,11 +377,89 @@ class EmployeeSerializer(serializers.ModelSerializer):
                 )
         return value
 
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep["designation"] = instance.designation.name
+        return rep
+
+    def create(self, validated_data):
+        account = self.context["request"].account
+        designation_name = validated_data.pop("designation")
+
+        with transaction.atomic():
+            # Handle category
+            designation = get_or_create_category(designation_name, account)
+            validated_data["designation"] = designation
+            employee = Employee.objects.create(**validated_data)
+
+            return employee
+
+    def update(self, instance, validated_data):
+        account = self.context["request"].account
+        designation_name = validated_data.pop("designation", None)
+
+        with transaction.atomic():
+            # Handle category
+            if designation_name:
+                designation = get_or_create_category(designation_name, account)
+                instance.designation = designation
+
+            # Update employee fields
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+            instance.save()
+
+            return instance
+
 
 class SalonChairSerializer(serializers.ModelSerializer):
+    type = serializers.CharField(write_only=True)
+
     class Meta:
         model = Chair
         fields = ["uid", "name", "type", "status", "created_at", "updated_at"]
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep["type"] = instance.type.name
+        return rep
+
+    def create(self, validated_data):
+        account = self.context["request"].account
+        chair_type = validated_data.pop("type")
+
+        with transaction.atomic():
+            # Handle category
+            chair_type = get_or_create_category(chair_type, account)
+            validated_data["type"] = chair_type
+            chair = Chair.objects.create(**validated_data)
+
+            return chair
+
+        with transaction.atomic():
+            # Handle category
+            chair_type = get_or_create_category(chair_type, account)
+            validated_data["type"] = chair_type
+            chair = Chair.objects.create(**validated_data)
+
+            return chair
+
+    def update(self, instance, validated_data):
+        account = self.context["request"].account
+        chair_type = validated_data.pop("type", None)
+
+        with transaction.atomic():
+            # Handle category
+            if chair_type:
+                chair_type = get_or_create_category(chair_type, account)
+                instance.type = chair_type
+
+            # Update chair fields
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+            instance.save()
+
+            return instance
 
 
 class SalonCustomerSlimSerializer(serializers.ModelSerializer):
