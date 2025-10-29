@@ -55,7 +55,7 @@ THIRD_PARTY_APPS = [
     "rest_framework_simplejwt.token_blacklist",
 ]
 
-PROJECT_APPS = ["common", "apps.authentication", "apps.salon"]
+PROJECT_APPS = ["common", "apps.authentication", "apps.salon", "apps.support"]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + PROJECT_APPS
 

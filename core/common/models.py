@@ -3,6 +3,7 @@ from uuid import uuid4
 from django.db import models
 
 from .choices import CategoryType
+from .utils import get_media_path
 
 
 class BaseModel(models.Model):
@@ -32,3 +33,44 @@ class Category(BaseModel):
 
     def __str__(self):
         return f"{self.name} - {self.category_type} - {self.account.name}"
+
+
+class Media(BaseModel):
+    from apps.salon.models import Service, Product, Booking
+    from apps.support.models import SupportTicket
+
+    # service = models.ForeignKey(
+    #     Service,
+    #     on_delete=models.SET_NULL,
+    #     related_name="service_images",
+    #     null=True,
+    #     blank=True,
+    # )
+    # product = models.ForeignKey(
+    #     Product,
+    #     on_delete=models.SET_NULL,
+    #     related_name="product_images",
+    #     null=True,
+    #     blank=True,
+    # )
+    # booking = models.ForeignKey(
+    #     Booking,
+    #     on_delete=models.SET_NULL,
+    #     related_name="booking_images",
+    #     null=True,
+    #     blank=True,
+    # )
+    support_ticket = models.ForeignKey(
+        SupportTicket,
+        on_delete=models.SET_NULL,
+        related_name="support_ticket_images",
+        null=True,
+        blank=True,
+    )
+    image = models.ImageField(upload_to=get_media_path)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Media: {self.uid}"

@@ -3,9 +3,6 @@ from datetime import timedelta, datetime, timezone as dt_timezone
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils import timezone
 
-from .models import Category
-from .choices import CategoryType
-
 
 class EmailVerificationTokenGenerator(PasswordResetTokenGenerator):
     def __init__(self, expiry_minutes=60):
@@ -42,10 +39,17 @@ class EmailVerificationTokenGenerator(PasswordResetTokenGenerator):
 email_token_generator = EmailVerificationTokenGenerator(expiry_minutes=60)
 
 
-def get_or_create_category(name, account):
+def get_or_create_category(name, account, category_type):
+    from .models import Category
+
     """Retrieve existing or create new category dynamically."""
     name = name.strip().title()
     category, _ = Category.objects.get_or_create(
-        name=name, account=account, category_type=CategoryType.SERVICE, defaults={}
+        name=name, account=account, category_type=category_type, defaults={}
     )
     return category
+
+
+def get_media_path(instance, filename):
+    # file will be uploaded to MEDIA_ROOT/media_<id>/<filename>
+    return f"media_{instance.uid}/{filename}"

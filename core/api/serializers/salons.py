@@ -212,7 +212,9 @@ class SalonServiceSerializer(serializers.ModelSerializer):
 
         with transaction.atomic():
             # Handle category
-            category = get_or_create_category(category_name, account)
+            category = get_or_create_category(
+                category_name, account, CategoryType.SERVICE
+            )
             validated_data["category"] = category
 
             service = Service.objects.create(**validated_data)
@@ -232,7 +234,9 @@ class SalonServiceSerializer(serializers.ModelSerializer):
         with transaction.atomic():
             # Handle category
             if category_name:
-                category = get_or_create_category(category_name, account)
+                category = get_or_create_category(
+                    category_name, account, CategoryType.SERVICE
+                )
                 instance.category = category
 
             # Update service fields
@@ -297,7 +301,9 @@ class SalonProductSerializer(serializers.ModelSerializer):
 
         with transaction.atomic():
             # Handle category
-            category = get_or_create_category(category_name, account)
+            category = get_or_create_category(
+                category_name, account, CategoryType.PRODUCT
+            )
             validated_data["category"] = category
             product = Product.objects.create(**validated_data)
 
@@ -315,7 +321,9 @@ class SalonProductSerializer(serializers.ModelSerializer):
         with transaction.atomic():
             # Handle category
             if category_name:
-                category = get_or_create_category(category_name, account)
+                category = get_or_create_category(
+                    category_name, account, CategoryType.PRODUCT
+                )
                 instance.category = category
 
             # Update product fields
@@ -388,7 +396,9 @@ class EmployeeSerializer(serializers.ModelSerializer):
 
         with transaction.atomic():
             # Handle category
-            designation = get_or_create_category(designation_name, account)
+            designation = get_or_create_category(
+                designation_name, account, CategoryType.EMPLOYEE
+            )
             validated_data["designation"] = designation
             employee = Employee.objects.create(**validated_data)
 
@@ -401,7 +411,9 @@ class EmployeeSerializer(serializers.ModelSerializer):
         with transaction.atomic():
             # Handle category
             if designation_name:
-                designation = get_or_create_category(designation_name, account)
+                designation = get_or_create_category(
+                    designation_name, account, CategoryType.EMPLOYEE
+                )
                 instance.designation = designation
 
             # Update employee fields
@@ -430,7 +442,7 @@ class SalonChairSerializer(serializers.ModelSerializer):
 
         with transaction.atomic():
             # Handle category
-            chair_type = get_or_create_category(chair_type, account)
+            chair_type = get_or_create_category(chair_type, account, CategoryType.CHAIR)
             validated_data["type"] = chair_type
             chair = Chair.objects.create(**validated_data)
 
@@ -438,7 +450,7 @@ class SalonChairSerializer(serializers.ModelSerializer):
 
         with transaction.atomic():
             # Handle category
-            chair_type = get_or_create_category(chair_type, account)
+            chair_type = get_or_create_category(chair_type, account, CategoryType.CHAIR)
             validated_data["type"] = chair_type
             chair = Chair.objects.create(**validated_data)
 

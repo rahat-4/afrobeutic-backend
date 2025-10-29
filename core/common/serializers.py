@@ -12,6 +12,8 @@ from apps.salon.models import (
     Chair,
 )
 
+from .models import Media
+
 User = get_user_model()
 
 
@@ -102,3 +104,9 @@ class BookingSlimSerializer(serializers.ModelSerializer):
             "services",
             "products",
         ]
+
+
+class MediaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Media
+        fields = ["uid", "image", "created_at", "updated_at"]
