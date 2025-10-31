@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 
 from rest_framework import serializers
 
+from apps.authentication.models import Account, AccountMembership
 from apps.salon.models import (
     Booking,
     Customer,
@@ -20,7 +21,7 @@ User = get_user_model()
 class UserSlimSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["uid", "first_name", "last_name", "email", "gender"]
+        fields = ["uid", "first_name", "last_name", "email"]
 
 
 class CustomerSlimSerializer(serializers.ModelSerializer):
@@ -30,6 +31,8 @@ class CustomerSlimSerializer(serializers.ModelSerializer):
 
 
 class EmployeeSlimSerializer(serializers.ModelSerializer):
+    designation = serializers.CharField(source="designation.name", read_only=True)
+
     class Meta:
         model = Employee
         fields = ["uid", "employee_id", "name", "phone", "designation", "image"]
@@ -104,6 +107,25 @@ class BookingSlimSerializer(serializers.ModelSerializer):
             "services",
             "products",
         ]
+
+
+class AccountSlimSerializer(serializers.ModelSerializer):
+    owner_name = serializers.CharField(source="owner.get_full_name", read_only=True)
+    owner_email = serializers.EmailField(source="owner.email", read_only=True)
+    role = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Account
+        fields = ["uid", "name", "owner_name", "owner_email", "role"]
+
+    def get_role(self, obj):
+        user = self.context.get("view_user")
+        if not user:
+            return None
+
+        membership = obj.members.filter(user=user).first()
+
+        return membership.role if membership else None
 
 
 class MediaSerializer(serializers.ModelSerializer):

@@ -90,11 +90,18 @@ class MeSerializer(serializers.ModelSerializer):
         read_only_fields = ["uid", "email", "role"]
 
     def get_role(self, obj):
-        account = self.context.get("request").account
-        try:
-            role = AccountMembership.objects.get(user=obj, account=account).role
-        except AccountMembership.DoesNotExist:
-            role = None
+        user = self.context.get("request").user
+
+        if user.is_superuser:
+            role = "Management Admin"
+        elif user.is_staff:
+            role = "Management Staff"
+        else:
+            account = self.context.get("request").account
+            try:
+                role = AccountMembership.objects.get(user=obj, account=account).role
+            except AccountMembership.DoesNotExist:
+                role = None
 
         return role
 
@@ -103,11 +110,14 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
 
-        # Add custom data to the response
-        account = self.user.memberships.filter(is_owner=True).first().account
-        if account:
-            data["account_id"] = str(account.uid)
+        if self.user.is_staff:
+            pass
         else:
-            data["account_id"] = None
+            # Add custom data to the response
+            account = self.user.memberships.filter(is_owner=True).first().account
+            if account:
+                data["account_id"] = str(account.uid)
+            else:
+                data["account_id"] = None
 
         return data

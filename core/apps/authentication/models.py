@@ -7,7 +7,7 @@ from django.utils import timezone
 from common.models import BaseModel
 
 from .choices import AccountMembershipRole, UserGender, AccountMembershipStatus
-from .managers import UserManager
+from .managers import UserManager, AccountMembershipQuerySet
 from .utils import get_user_media_path_prefix
 
 
@@ -28,7 +28,7 @@ class User(AbstractBaseUser, PermissionsMixin, BaseModel):
         choices=UserGender.choices,
         default=UserGender.OTHER,
     )
-    country = CountryField()
+    country = CountryField(blank=True, null=True)
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -72,6 +72,8 @@ class AccountMembership(BaseModel):
         default=AccountMembershipStatus.ACTIVE,
     )
     is_owner = models.BooleanField(default=False)
+
+    objects = AccountMembershipQuerySet.as_manager()
 
     class Meta:
         unique_together = ["user", "account"]

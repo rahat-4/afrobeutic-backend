@@ -7,4 +7,5 @@ urlpatterns = [
     path("/customers", include("api.urls.customers")),
     path("/categories", include("common.urls")),
     path("/support-tickets", include("api.urls.supports")),
+    path("/admins", include("api.urls.admins")),
 ]

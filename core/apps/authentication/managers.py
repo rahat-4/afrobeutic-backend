@@ -1,4 +1,7 @@
 from django.contrib.auth.models import BaseUserManager
+from django.db import models
+
+from .choices import AccountMembershipRole
 
 
 class UserManager(BaseUserManager):
@@ -40,3 +43,16 @@ class UserManager(BaseUserManager):
             raise ValueError("Superuser must have is_staff=True.")
 
         return self.create_user(email, password, **extra_fields)
+
+
+class AccountMembershipQuerySet(models.QuerySet):
+    def ordered_by_role(self):
+        return self.order_by(
+            models.Case(
+                models.When(role=AccountMembershipRole.OWNER, then=models.Value(1)),
+                models.When(role=AccountMembershipRole.ADMIN, then=models.Value(2)),
+                models.When(role=AccountMembershipRole.STAFF, then=models.Value(3)),
+                default=models.Value(4),
+                output_field=models.IntegerField(),
+            )
+        )

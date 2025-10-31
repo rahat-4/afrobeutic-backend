@@ -4,117 +4,59 @@ from apps.authentication.models import AccountMembership
 from apps.authentication.choices import AccountMembershipRole
 
 
-class IsManagementAdmin(BasePermission):
+def _has_account_membership(user, account, roles):
+    if not (user and user.is_authenticated and account):
+        return False
+    return AccountMembership.objects.filter(
+        user=user, account=account, role__in=roles
+    ).exists()
+
+
+class RolePermission(BasePermission):
+    roles = ()
+
     def has_permission(self, request, view):
-        return (
-            request.user
-            and request.user.is_authenticated
-            and request.user.is_staff
-            and AccountMembership.objects.filter(
-                user=request.user, role=AccountMembershipRole.MANAGEMENT_ADMIN
-            ).exists()
+        return _has_account_membership(
+            request.user, getattr(request, "account", None), self.roles
         )
 
 
-class IsManagementStaff(BasePermission):
+class IsOwner(RolePermission):
+    roles = (AccountMembershipRole.OWNER,)
+
+
+class IsAdmin(RolePermission):
+    roles = (AccountMembershipRole.ADMIN,)
+
+
+class IsStaff(RolePermission):
+    roles = (AccountMembershipRole.STAFF,)
+
+
+class IsOwnerOrAdmin(RolePermission):
+    roles = (AccountMembershipRole.OWNER, AccountMembershipRole.ADMIN)
+
+
+class IsOwnerOrAdminOrStaff(RolePermission):
+    roles = (
+        AccountMembershipRole.OWNER,
+        AccountMembershipRole.ADMIN,
+        AccountMembershipRole.STAFF,
+    )
+
+
+class IsManagementAdminOrStaff(BasePermission):
     def has_permission(self, request, view):
-        return (
-            request.user
-            and request.user.is_authenticated
-            and request.user.is_staff
-            and AccountMembership.objects.filter(
-                user=request.user, role=AccountMembershipRole.MANAGEMENT_STAFF
-            ).exists()
-        )
+        user = getattr(request, "user", None)
+        return bool(user and user.is_authenticated and getattr(user, "is_staff", False))
 
 
-class IsOwner(BasePermission):
+class IsManagementAdmin(IsManagementAdminOrStaff):
     def has_permission(self, request, view):
-        return (
-            request.user
-            and request.user.is_authenticated
-            and AccountMembership.objects.filter(
-                user=request.user,
-                account=request.account,
-                role=AccountMembershipRole.OWNER,
-            ).exists()
-        )
-
-
-class IsAdmin(BasePermission):
-    def has_permission(self, request, view):
-        return (
-            request.user
-            and request.user.is_authenticated
-            and AccountMembership.objects.filter(
-                user=request.user,
-                account=request.account,
-                role=AccountMembershipRole.ADMIN,
-            ).exists()
-        )
-
-
-class IsStaff(BasePermission):
-    def has_permission(self, request, view):
-        return (
-            request.user
-            and request.user.is_authenticated
-            and AccountMembership.objects.filter(
-                user=request.user,
-                account=request.account,
-                role=AccountMembershipRole.STAFF,
-            ).exists()
-        )
-
-
-class IsOwnerOrAdmin(BasePermission):
-
-    def has_permission(self, request, view):
-        return (
-            request.user
-            and request.user.is_authenticated
-            and AccountMembership.objects.filter(
-                user=request.user,
-                account=request.account,
-                role__in=[AccountMembershipRole.OWNER, AccountMembershipRole.ADMIN],
-            ).exists()
-        )
-
-    # def has_object_permission(self, request, view, obj):
-    #     logger.info(
-    #         f"Checking object permissions for user {request.user} on object {obj}"
-    #     )
-
-    #     # Get the user's membership for this specific account
-    #     membership = AccountMembership.objects.filter(
-    #         user=request.user,
-    #         account=obj.account,
-    #         role__in=[AccountMembershipRole.OWNER, AccountMembershipRole.ADMIN],
-    #     ).first()
-
-    #     if not membership:
-    #         return False
-
-    #     # If the user is trying to update `status`, they must be the OWNER
-    #     if request.method in ["PUT", "PATCH"] and "status" in request.data:
-    #         return membership.role == AccountMembershipRole.OWNER
-
-    #     # Otherwise allow if they are OWNER or ADMIN
-    #     return True
-
-
-class IsOwnerOrAdminOrStaff(BasePermission):
-    def has_permission(self, request, view):
-        return (
-            request.user
-            and request.user.is_authenticated
-            and AccountMembership.objects.filter(
-                user=request.user,
-                account=request.account,
-                role__in=[
-                    AccountMembershipRole.OWNER,
-                    AccountMembershipRole.ADMIN,
-                    AccountMembershipRole.STAFF,
-                ],
-            ).exists()
+        user = getattr(request, "user", None)
+        return bool(
+            user
+            and user.is_authenticated
+            and getattr(user, "is_staff", False)
+            and getattr(user, "is_superuser", False)
         )
