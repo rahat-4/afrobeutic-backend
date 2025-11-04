@@ -95,7 +95,7 @@ class SalonServiceListView(ListCreateAPIView):
         filters.SearchFilter,
         filters.OrderingFilter,
     ]
-    search_fields = ["name", "category"]
+    search_fields = ["name", "category__name"]
     ordering_fields = ["created_at", "price"]
     ordering = ["-created_at"]
 
@@ -160,7 +160,7 @@ class SalonProductListView(ListCreateAPIView):
         filters.SearchFilter,
         filters.OrderingFilter,
     ]
-    search_fields = ["name", "category"]
+    search_fields = ["name", "category__name"]
     ordering_fields = ["created_at", "price"]
     ordering = ["-created_at"]
 
@@ -225,7 +225,7 @@ class SalonEmployeeListView(ListCreateAPIView):
         filters.SearchFilter,
         filters.OrderingFilter,
     ]
-    search_fields = ["employee_id", "name", "phone", "designation"]
+    search_fields = ["employee_id", "name", "phone", "designation__name"]
     ordering_fields = ["created_at"]
     ordering = ["-created_at"]
 
@@ -290,7 +290,7 @@ class SalonChairListView(ListCreateAPIView):
         filters.SearchFilter,
         filters.OrderingFilter,
     ]
-    search_fields = ["name", "type"]
+    search_fields = ["name", "type__name"]
     ordering_fields = ["created_at"]
     ordering = ["-created_at"]
 
@@ -357,10 +357,13 @@ class SalonChairBookingListView(ListCreateAPIView):
         filters.OrderingFilter,
     ]
 
-    filterset_fields = ["booking_date", "status"]
     search_fields = ["customer__name", "employee__name"]
     ordering_fields = ["created_at", "booking_date", "booking_time"]
     ordering = ["-created_at"]
+    filterset_fields = {
+        "booking_date": ["exact", "gte", "lte"],
+        "status": ["exact"],
+    }
 
     def get_queryset(self):
         user = self.request.user

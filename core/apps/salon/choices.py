@@ -46,4 +46,4 @@ class BookingStatus(models.TextChoices):
 class ChairStatus(models.TextChoices):
     AVAILABLE = "AVAILABLE", _("Available")
     MAINTENANCE = "MAINTENANCE", _("Maintenance")
-    OUTOFORDER = "OUTOFORDER", _("Out of Order")
+    OUT_OF_ORDER = "OUT_OF_ORDER", _("Out of Order")

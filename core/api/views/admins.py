@@ -4,9 +4,9 @@ from django.db.models import Prefetch
 from rest_framework.generics import ListAPIView
 
 from common.permissions import IsManagementAdminOrStaff
-from apps.authentication.models import AccountMembership
+from apps.authentication.models import Account, AccountMembership
 
-from ..serializers.admins import AdminUserSerializer
+from ..serializers.admins import AdminUserSerializer, AdminAccountSerializer
 
 User = get_user_model()
 
@@ -26,3 +26,9 @@ class AdminUserListView(ListAPIView):
             .order_by("created_at")
             .prefetch_related(Prefetch("memberships", queryset=ordered_memberships))
         )
+
+
+class AdminAccountListView(ListAPIView):
+    queryset = Account.objects.all().order_by("created_at")
+    serializer_class = AdminAccountSerializer
+    permission_classes = [IsManagementAdminOrStaff]

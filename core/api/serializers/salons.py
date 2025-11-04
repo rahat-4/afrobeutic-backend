@@ -463,7 +463,7 @@ class SalonChairSerializer(serializers.ModelSerializer):
         with transaction.atomic():
             # Handle category
             if chair_type:
-                chair_type = get_or_create_category(chair_type, account)
+                chair_type = get_or_create_category(chair_type, account, CategoryType.CHAIR)
                 instance.type = chair_type
 
             # Update chair fields
