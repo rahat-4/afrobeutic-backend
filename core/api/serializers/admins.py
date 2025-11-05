@@ -2,9 +2,10 @@ from django.contrib.auth import get_user_model
 
 from rest_framework import serializers
 
-from apps.authentication.models import Account, AccountMembership
-
 from common.serializers import AccountSlimSerializer, UserSlimSerializer
+
+from apps.authentication.models import Account, AccountMembership
+from apps.salon.models import Salon
 
 User = get_user_model()
 
@@ -76,3 +77,24 @@ class AdminAccountSerializer(serializers.ModelSerializer):
 
         context = {**self.context, "account": obj}
         return UserSlimSerializer(users, many=True, context=context).data
+
+
+class AdminSalonSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Salon
+        fields = [
+            "uid",
+            "logo",
+            "name",
+            "salon_type",
+            "email",
+            "phone",
+            "website",
+            "street",
+            "city",
+            "postal_code",
+            "country",
+            "address",
+            "status",
+            "created_at",
+        ]

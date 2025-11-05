@@ -1,12 +1,19 @@
 from django.contrib.auth import get_user_model
 from django.db.models import Prefetch
 
-from rest_framework.generics import ListAPIView
+from rest_framework.exceptions import ValidationError
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 
 from common.permissions import IsManagementAdminOrStaff
-from apps.authentication.models import Account, AccountMembership
 
-from ..serializers.admins import AdminUserSerializer, AdminAccountSerializer
+from apps.authentication.models import Account, AccountMembership
+from apps.salon.models import Salon
+
+from ..serializers.admins import (
+    AdminUserSerializer,
+    AdminAccountSerializer,
+    AdminSalonSerializer,
+)
 
 User = get_user_model()
 
@@ -30,5 +37,31 @@ class AdminUserListView(ListAPIView):
 
 class AdminAccountListView(ListAPIView):
     queryset = Account.objects.all().order_by("created_at")
-    serializer_class = AdminAccountSerializer
+    serializer_class = AdminSalonSerializer
     permission_classes = [IsManagementAdminOrStaff]
+
+
+class AdminSalonListView(ListAPIView):
+    serializer_class = AdminSalonSerializer
+    permission_classes = [IsManagementAdminOrStaff]
+
+    def get_queryset(self):
+        account = self.request.account
+
+        return Salon.objects.filter(account=account).order_by("created_at")
+
+
+class AdminSalonDetailView(RetrieveAPIView):
+    queryset = Salon.objects.all()
+    serializer_class = AdminSalonSerializer
+    permission_classes = [IsManagementAdminOrStaff]
+
+    def get_object(self):
+        account = self.request.account
+        salon_uid = self.kwargs.get("salon_uid")
+
+        try:
+            salon = Salon.objects.get(uid=salon_uid, account=account)
+            return salon
+        except Salon.DoesNotExist:
+            raise ValidationError("Salon not found.")
