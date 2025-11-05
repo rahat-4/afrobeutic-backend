@@ -9,6 +9,7 @@ from apps.salon.models import (
     Employee,
     Salon,
     Product,
+    SalonMedia,
     Service,
     Chair,
 )
@@ -54,6 +55,8 @@ class SalonSlimSerializer(serializers.ModelSerializer):
 
 
 class ServiceSlimSerializer(serializers.ModelSerializer):
+    category = serializers.CharField(source="category.name", read_only=True)
+
     class Meta:
         model = Service
         fields = [
@@ -70,12 +73,16 @@ class ServiceSlimSerializer(serializers.ModelSerializer):
 
 
 class ProductSlimSerializer(serializers.ModelSerializer):
+    category = serializers.CharField(source="category.name", read_only=True)
+
     class Meta:
         model = Product
         fields = ["uid", "name", "category", "price", "description"]
 
 
 class ChairSlimSerializer(serializers.ModelSerializer):
+    type = serializers.CharField(source="type.name", read_only=True)
+
     class Meta:
         model = Chair
         fields = ["uid", "name", "type"]
@@ -132,3 +139,12 @@ class MediaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Media
         fields = ["uid", "image", "created_at", "updated_at"]
+
+    def get_image(self, obj):
+        request = self.context.get("request")
+        if obj.image:
+            # Build full absolute URL if request is available
+            return (
+                request.build_absolute_uri(obj.image.url) if request else obj.image.url
+            )
+        return None

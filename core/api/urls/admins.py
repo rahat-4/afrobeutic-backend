@@ -6,9 +6,33 @@ from ..views.admins import (
     AdminSalonListView,
     AdminSalonDetailView,
     AdminServiceListView,
+    AdminProductListView,
+    AdminEmployeeListView,
+    AdminBookingListView,
+    AdminLookBookListView,
 )
 
 urlpatterns = [
+    path(
+        "/salons/<uuid:salon_uid>/lookbooks",
+        AdminLookBookListView.as_view(),
+        name="admin.salon-lookbooks",
+    ),
+    path(
+        "/salons/<uuid:salon_uid>/bookings",
+        AdminBookingListView.as_view(),
+        name="admin.salon-bookings",
+    ),
+    path(
+        "/salons/<uuid:salon_uid>/employees",
+        AdminEmployeeListView.as_view(),
+        name="admin.salon-employees",
+    ),
+    path(
+        "/salons/<uuid:salon_uid>/products",
+        AdminProductListView.as_view(),
+        name="admin.salon-products",
+    ),
     path(
         "/salons/<uuid:salon_uid>/services",
         AdminServiceListView.as_view(),

@@ -7,13 +7,17 @@ from rest_framework.generics import ListAPIView, RetrieveAPIView
 from common.permissions import IsManagementAdminOrStaff
 
 from apps.authentication.models import Account, AccountMembership
-from apps.salon.models import Salon, Service
+from apps.salon.models import Salon, Service, Product, Employee, Booking
 
 from ..serializers.admins import (
     AdminUserSerializer,
     AdminAccountSerializer,
     AdminSalonSerializer,
     AdminServiceSerializer,
+    AdminEmployeeSerializer,
+    AdminProductSerializer,
+    AdminBookingSerializer,
+    AdminLookBookSerializer,
 )
 
 User = get_user_model()
@@ -80,6 +84,78 @@ class AdminServiceListView(ListAPIView):
         try:
             salon = Salon.objects.get(uid=salon_uid, account=account)
             return Service.objects.filter(account=account, salon=salon).order_by(
+                "created_at"
+            )
+        except Salon.DoesNotExist:
+            raise ValidationError("Salon not found.")
+
+
+class AdminProductListView(ListAPIView):
+    serializer_class = AdminProductSerializer
+    permission_classes = [IsManagementAdminOrStaff]
+
+    def get_queryset(self):
+        account = self.request.account
+
+        salon_uid = self.kwargs.get("salon_uid")
+
+        try:
+            salon = Salon.objects.get(uid=salon_uid, account=account)
+            return Product.objects.filter(account=account, salon=salon).order_by(
+                "created_at"
+            )
+        except Salon.DoesNotExist:
+            raise ValidationError("Salon not found.")
+
+
+class AdminEmployeeListView(ListAPIView):
+    serializer_class = AdminEmployeeSerializer
+    permission_classes = [IsManagementAdminOrStaff]
+
+    def get_queryset(self):
+        account = self.request.account
+
+        salon_uid = self.kwargs.get("salon_uid")
+
+        try:
+            salon = Salon.objects.get(uid=salon_uid, account=account)
+            return Employee.objects.filter(account=account, salon=salon).order_by(
+                "created_at"
+            )
+        except Salon.DoesNotExist:
+            raise ValidationError("Salon not found.")
+
+
+class AdminBookingListView(ListAPIView):
+    serializer_class = AdminBookingSerializer
+    permission_classes = [IsManagementAdminOrStaff]
+
+    def get_queryset(self):
+        account = self.request.account
+
+        salon_uid = self.kwargs.get("salon_uid")
+
+        try:
+            salon = Salon.objects.get(uid=salon_uid, account=account)
+            return Booking.objects.filter(account=account, salon=salon).order_by(
+                "created_at"
+            )
+        except Salon.DoesNotExist:
+            raise ValidationError("Salon not found.")
+
+
+class AdminLookBookListView(ListAPIView):
+    serializer_class = AdminLookBookSerializer
+    permission_classes = [IsManagementAdminOrStaff]
+
+    def get_queryset(self):
+        account = self.request.account
+
+        salon_uid = self.kwargs.get("salon_uid")
+
+        try:
+            salon = Salon.objects.get(uid=salon_uid, account=account)
+            return Booking.objects.filter(account=account, salon=salon).order_by(
                 "created_at"
             )
         except Salon.DoesNotExist:

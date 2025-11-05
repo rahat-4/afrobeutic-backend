@@ -6,6 +6,11 @@ from common.serializers import (
     AccountSlimSerializer,
     UserSlimSerializer,
     EmployeeSlimSerializer,
+    CustomerSlimSerializer,
+    ChairSlimSerializer,
+    ServiceSlimSerializer,
+    ProductSlimSerializer,
+    MediaSerializer,
 )
 
 from apps.authentication.models import Account, AccountMembership
@@ -126,3 +131,84 @@ class AdminServiceSerializer(serializers.ModelSerializer):
     def get_assign_employees(self, obj):
         employees = obj.assign_employees.all()
         return EmployeeSlimSerializer(employees, many=True).data
+
+
+class AdminProductSerializer(serializers.ModelSerializer):
+    category = serializers.CharField(source="category.name", read_only=True)
+
+    class Meta:
+        model = Product
+        fields = [
+            "uid",
+            "name",
+            "category",
+            "price",
+            "description",
+            "created_at",
+        ]
+
+
+class AdminEmployeeSerializer(serializers.ModelSerializer):
+    designation = serializers.CharField(source="designation.name", read_only=True)
+
+    class Meta:
+        model = Employee
+        fields = [
+            "uid",
+            "employee_id",
+            "name",
+            "phone",
+            "designation",
+            "image",
+            "created_at",
+        ]
+
+
+class AdminBookingSerializer(serializers.ModelSerializer):
+    customer = CustomerSlimSerializer()
+    chair = ChairSlimSerializer()
+    employee = EmployeeSlimSerializer()
+    services = ServiceSlimSerializer(many=True)
+    products = ProductSlimSerializer(many=True)
+
+    class Meta:
+        model = Booking
+        fields = [
+            "uid",
+            "booking_id",
+            "booking_date",
+            "booking_time",
+            "status",
+            "notes",
+            "booking_duration",
+            "cancellation_reason",
+            "cancelled_by",
+            "completed_at",
+            "customer",
+            "chair",
+            "employee",
+            "services",
+            "products",
+            "created_at",
+        ]
+
+
+class AdminLookBookSerializer(serializers.ModelSerializer):
+    customer = CustomerSlimSerializer()
+    images = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Booking
+        fields = [
+            "uid",
+            "booking_id",
+            "customer",
+            "completed_at",
+            "images",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_images(self, obj):
+        images = obj.booking_images.all()
+        return MediaSerializer(images, many=True, context=self.context).data
