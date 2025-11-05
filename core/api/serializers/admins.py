@@ -2,10 +2,14 @@ from django.contrib.auth import get_user_model
 
 from rest_framework import serializers
 
-from common.serializers import AccountSlimSerializer, UserSlimSerializer
+from common.serializers import (
+    AccountSlimSerializer,
+    UserSlimSerializer,
+    EmployeeSlimSerializer,
+)
 
 from apps.authentication.models import Account, AccountMembership
-from apps.salon.models import Salon
+from apps.salon.models import Salon, Service, Product, Employee, Booking
 
 User = get_user_model()
 
@@ -66,7 +70,6 @@ class AdminAccountSerializer(serializers.ModelSerializer):
         fields = [
             "uid",
             "name",
-            "owner",
             "created_at",
             "users",
         ]
@@ -98,3 +101,28 @@ class AdminSalonSerializer(serializers.ModelSerializer):
             "status",
             "created_at",
         ]
+
+
+class AdminServiceSerializer(serializers.ModelSerializer):
+    category = serializers.CharField(source="category.name", read_only=True)
+    assign_employees = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Service
+        fields = [
+            "uid",
+            "name",
+            "category",
+            "price",
+            "description",
+            "service_duration",
+            "available_time_slots",
+            "gender_specific",
+            "discount_percentage",
+            "assign_employees",
+            "created_at",
+        ]
+
+    def get_assign_employees(self, obj):
+        employees = obj.assign_employees.all()
+        return EmployeeSlimSerializer(employees, many=True).data

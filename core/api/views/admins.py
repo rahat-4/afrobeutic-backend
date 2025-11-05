@@ -7,12 +7,13 @@ from rest_framework.generics import ListAPIView, RetrieveAPIView
 from common.permissions import IsManagementAdminOrStaff
 
 from apps.authentication.models import Account, AccountMembership
-from apps.salon.models import Salon
+from apps.salon.models import Salon, Service
 
 from ..serializers.admins import (
     AdminUserSerializer,
     AdminAccountSerializer,
     AdminSalonSerializer,
+    AdminServiceSerializer,
 )
 
 User = get_user_model()
@@ -37,7 +38,7 @@ class AdminUserListView(ListAPIView):
 
 class AdminAccountListView(ListAPIView):
     queryset = Account.objects.all().order_by("created_at")
-    serializer_class = AdminSalonSerializer
+    serializer_class = AdminAccountSerializer
     permission_classes = [IsManagementAdminOrStaff]
 
 
@@ -63,5 +64,23 @@ class AdminSalonDetailView(RetrieveAPIView):
         try:
             salon = Salon.objects.get(uid=salon_uid, account=account)
             return salon
+        except Salon.DoesNotExist:
+            raise ValidationError("Salon not found.")
+
+
+class AdminServiceListView(ListAPIView):
+    serializer_class = AdminServiceSerializer
+    permission_classes = [IsManagementAdminOrStaff]
+
+    def get_queryset(self):
+        account = self.request.account
+
+        salon_uid = self.kwargs.get("salon_uid")
+
+        try:
+            salon = Salon.objects.get(uid=salon_uid, account=account)
+            return Service.objects.filter(account=account, salon=salon).order_by(
+                "created_at"
+            )
         except Salon.DoesNotExist:
             raise ValidationError("Salon not found.")

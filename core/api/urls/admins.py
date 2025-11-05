@@ -5,19 +5,25 @@ from ..views.admins import (
     AdminAccountListView,
     AdminSalonListView,
     AdminSalonDetailView,
+    AdminServiceListView,
 )
 
 urlpatterns = [
-    path("/users", AdminUserListView.as_view(), name="admin.users"),
-    path("/accounts", AdminAccountListView.as_view(), name="admin.accounts"),
     path(
-        "/salons",
-        AdminSalonListView.as_view(),
-        name="admin.salons",
+        "/salons/<uuid:salon_uid>/services",
+        AdminServiceListView.as_view(),
+        name="admin.salon-services",
     ),
     path(
         "/salons/<uuid:salon_uid>",
         AdminSalonDetailView.as_view(),
         name="admin.salon-detail",
     ),
+    path(
+        "/salons",
+        AdminSalonListView.as_view(),
+        name="admin.salons",
+    ),
+    path("/accounts", AdminAccountListView.as_view(), name="admin.accounts"),
+    path("/users", AdminUserListView.as_view(), name="admin.users"),
 ]
