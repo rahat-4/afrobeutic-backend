@@ -5,7 +5,6 @@ from django.utils.http import urlsafe_base64_decode
 from django.http import HttpResponseRedirect
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from datetime import timedelta
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -13,14 +12,11 @@ from rest_framework import status
 
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from apps.authentication.choices import AccountMembershipRole
 from apps.authentication.models import AccountInvitation, AccountMembership
 from apps.authentication.emails import (
     send_verification_email,
-    send_account_invitation_email,
 )
 
-from common.permissions import IsOwnerOrAdmin
 from common.throttles import RoleBasedLoginThrottle
 from common.utils import email_token_generator
 

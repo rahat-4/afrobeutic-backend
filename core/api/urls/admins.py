@@ -1,6 +1,7 @@
 from django.urls import path
 
 from ..views.admins import (
+    AdminRegistrationView,
     AdminUserListView,
     AdminAccountListView,
     AdminSalonListView,
@@ -9,15 +10,10 @@ from ..views.admins import (
     AdminProductListView,
     AdminEmployeeListView,
     AdminBookingListView,
-    AdminLookBookListView,
+    AdminManagementListView,
 )
 
 urlpatterns = [
-    path(
-        "/salons/<uuid:salon_uid>/lookbooks",
-        AdminLookBookListView.as_view(),
-        name="admin.salon-lookbooks",
-    ),
     path(
         "/salons/<uuid:salon_uid>/bookings",
         AdminBookingListView.as_view(),
@@ -50,4 +46,10 @@ urlpatterns = [
     ),
     path("/accounts", AdminAccountListView.as_view(), name="admin.accounts"),
     path("/users", AdminUserListView.as_view(), name="admin.users"),
+    path("/managements", AdminManagementListView.as_view(), name="admin.management"),
+    path(
+        "/register",
+        AdminRegistrationView.as_view(),
+        name="auth.admin-register",
+    ),
 ]

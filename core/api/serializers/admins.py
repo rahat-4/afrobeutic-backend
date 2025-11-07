@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db import transaction
 
 from rest_framework import serializers
 
@@ -17,6 +18,57 @@ from apps.authentication.models import Account, AccountMembership
 from apps.salon.models import Salon, Service, Product, Employee, Booking
 
 User = get_user_model()
+
+
+class AdminRegistrationSerializer(serializers.ModelSerializer):
+    role = serializers.ChoiceField(choices=["ADMIN", "STAFF"], write_only=True)
+    password = serializers.CharField(write_only=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True, min_length=8)
+
+    class Meta:
+        model = User
+        fields = [
+            "uid",
+            "first_name",
+            "last_name",
+            "email",
+            "country",
+            "role",
+            "password",
+            "confirm_password",
+        ]
+
+    def validate(self, attrs):
+        errors = {}
+
+        if attrs.get("password") != attrs.get("confirm_password"):
+            errors["confirm_password"] = "Passwords do not match."
+        if User.objects.filter(email=attrs.get("email")).exists():
+            errors["email"] = "Email already exists."
+
+        if errors:
+            raise serializers.ValidationError(errors)
+
+        return attrs
+
+    def create(self, validated_data):
+        with transaction.atomic():
+            role = validated_data.pop("role")
+            validated_data.pop("confirm_password", None)
+            password = validated_data.pop("password")
+
+            user = User(**validated_data)
+            user.is_active = False  # User must verify email to activate account
+            if role == "ADMIN":
+                user.is_admin = True
+                user.is_staff = True
+            elif role == "STAFF":
+                user.is_staff = True
+
+            user.set_password(password)
+            user.save()
+
+            return user
 
 
 class AdminUserSerializer(serializers.ModelSerializer):
@@ -170,6 +222,7 @@ class AdminBookingSerializer(serializers.ModelSerializer):
     employee = EmployeeSlimSerializer()
     services = ServiceSlimSerializer(many=True)
     products = ProductSlimSerializer(many=True)
+    images = serializers.SerializerMethodField()
 
     class Meta:
         model = Booking
@@ -189,26 +242,33 @@ class AdminBookingSerializer(serializers.ModelSerializer):
             "employee",
             "services",
             "products",
-            "created_at",
-        ]
-
-
-class AdminLookBookSerializer(serializers.ModelSerializer):
-    customer = CustomerSlimSerializer()
-    images = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Booking
-        fields = [
-            "uid",
-            "booking_id",
-            "customer",
-            "completed_at",
             "images",
             "created_at",
-            "updated_at",
         ]
 
     def get_images(self, obj):
         images = obj.booking_images.all()
         return MediaSerializer(images, many=True, context=self.context).data
+
+
+class AdminManagementSerializer(serializers.ModelSerializer):
+    role = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            "uid",
+            "avatar",
+            "first_name",
+            "last_name",
+            "email",
+            "country",
+            "role",
+            "last_login",
+        ]
+
+    def get_role(self, obj):
+        if obj.is_admin and obj.is_staff:
+            return "Admin"
+        else:
+            return "Staff"
