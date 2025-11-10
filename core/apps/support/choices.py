@@ -14,3 +14,9 @@ class SupportTicketTopic(models.TextChoices):
     CHATBOTS = "CHATBOTS", "Chatbots"
     CLIENT_REQUESTS = "CLIENT_REQUESTS", "Client Requests"
     OTHERS = "OTHERS", "Others"
+
+
+class SupportTicketStatus(models.TextChoices):
+    NEW = "NEW", "New"
+    IN_REVIEW = "IN_REVIEW", "In Review"
+    RESOLVED = "RESOLVED", "Resolved"

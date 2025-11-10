@@ -18,7 +18,7 @@ from apps.authentication.emails import send_verification_email
 from apps.authentication.models import Account, AccountMembership
 from apps.salon.models import Salon, Service, Product, Employee, Booking
 
-from ..serializers.admins import (
+from ..serializers.admin import (
     AdminRegistrationSerializer,
     AdminUserSerializer,
     AdminAccountSerializer,

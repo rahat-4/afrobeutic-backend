@@ -2,16 +2,18 @@ import re
 from django.utils.deprecation import MiddlewareMixin
 from django.http import JsonResponse
 
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
 from apps.authentication.models import Account
 
 
 class CurrentAccountMiddleware(MiddlewareMixin):
     EXCLUDED_PATHS = [
         # Admin paths
-        re.compile(r"^/api/admins/managements/?$"),
-        re.compile(r"^/api/admins/users/?$"),
-        re.compile(r"^/api/admins/accounts/?$"),
-        re.compile(r"^/api/admins/register/?$"),
+        re.compile(r"^/api/admin/managements/?$"),
+        re.compile(r"^/api/admin/users/?$"),
+        re.compile(r"^/api/admin/accounts/?$"),
+        re.compile(r"^/api/admin/register/?$"),
         # Public paths
         re.compile(r"^/admin/.*$"),
         re.compile(r"^/api/auth/register/?$"),
@@ -34,10 +36,23 @@ class CurrentAccountMiddleware(MiddlewareMixin):
 
     def is_excluded_path(self, path):
         test = any(pattern.match(path) for pattern in self.EXCLUDED_PATHS)
-        print("is_excluded_path", path, test)  # Debugging line
+        print("is_excluded_path", path, test)
         return test
 
     def process_request(self, request):
+        jwt_auth = JWTAuthentication()
+        try:
+            user_auth_tuple = jwt_auth.authenticate(request)
+            if user_auth_tuple is not None:
+                request.user, _ = user_auth_tuple
+        except Exception:
+            pass
+
+        if request.path == "/api/auth/me":
+            if getattr(request.user, "is_staff", False):
+                request.account = None
+                return
+
         if self.is_excluded_path(request.path):
             request.account = None
             return

@@ -1,6 +1,6 @@
 from django.urls import path
 
-from ..views.admins import (
+from ..views.admin import (
     AdminRegistrationView,
     AdminUserListView,
     AdminAccountListView,

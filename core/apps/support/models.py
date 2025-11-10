@@ -3,7 +3,7 @@ from django.db import models
 from common.models import BaseModel
 from apps.authentication.models import Account
 
-from .choices import SupportTicketTopic, SupportTicketLevel
+from .choices import SupportTicketTopic, SupportTicketLevel, SupportTicketStatus
 
 
 class SupportTicket(BaseModel):
@@ -19,6 +19,11 @@ class SupportTicket(BaseModel):
     )
     subject = models.CharField(max_length=255)
     queries = models.TextField()
+    status = models.CharField(
+        max_length=20,
+        choices=SupportTicketStatus.choices,
+        default=SupportTicketStatus.NEW,
+    )
 
     # Fk
     account = models.ForeignKey(

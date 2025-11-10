@@ -1,3 +1,7 @@
+from datetime import datetime
+
+from django.db.models import Prefetch
+
 from rest_framework.generics import (
     ListAPIView,
     RetrieveAPIView,
@@ -33,7 +37,8 @@ from ..serializers.salons import (
     SalonChairSerializer,
     EmployeeSerializer,
     SalonChairBookingSerializer,
-    SalonBookingSerializer,
+    SalonBookingCalendarSerializer,
+    SalonBookingCalendarDetailSerializer,
     SalonLookBookSerializer,
 )
 
@@ -357,7 +362,7 @@ class SalonChairBookingListView(ListCreateAPIView):
         filters.OrderingFilter,
     ]
 
-    search_fields = ["customer__name", "employee__name"]
+    search_fields = ["customer__name", "employee__name", "booking_id"]
     ordering_fields = ["created_at", "booking_date", "booking_time"]
     ordering = ["-created_at"]
     filterset_fields = {
@@ -410,35 +415,52 @@ class SalonChairBookingDetailView(RetrieveAPIView):
         )
 
 
-class SalonBookingListView(ListAPIView):
-    serializer_class = SalonBookingSerializer
+class SalonBookingCalendarListView(ListAPIView):
+    serializer_class = SalonBookingCalendarSerializer
     permission_classes = [IsOwnerOrAdminOrStaff]
-    filter_backends = [
-        DjangoFilterBackend,
-        filters.SearchFilter,
-        filters.OrderingFilter,
-    ]
-    filterset_fields = ["booking_date", "status"]
-    search_fields = ["customer__name", "customer__phone", "booking_id"]
-    ordering_fields = ["created_at", "booking_date"]
-    ordering = ["-created_at"]
 
     def get_queryset(self):
         user = self.request.user
         account = self.request.account
         salon_uid = self.kwargs.get("salon_uid")
 
-        queryset = Booking.objects.filter(
-            account=account,
+        # Get date from query params, default to today
+        date_str = self.request.query_params.get("date")
+
+        if date_str:
+            try:
+                target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            except ValueError:
+                target_date = datetime.now().date()
+        else:
+            target_date = datetime.now().date()
+
+        allowed_statuses = [
+            BookingStatus.PLACED,
+            BookingStatus.INPROGRESS,
+            BookingStatus.RESCHEDULED,
+            BookingStatus.COMPLETED,
+        ]
+
+        return Employee.objects.filter(
             salon__uid=salon_uid,
+            account=account,
             account__members__user=user,
+        ).prefetch_related(
+            Prefetch(
+                "employee_bookings",
+                queryset=Booking.objects.filter(
+                    status__in=allowed_statuses,
+                    account=account,
+                    salon__uid=salon_uid,
+                    booking_date=target_date,
+                ),
+            )
         )
 
-        return queryset
 
-
-class SalonBookingDetailView(RetrieveUpdateAPIView):
-    serializer_class = SalonBookingSerializer
+class SalonBookingCalendarDetailView(RetrieveUpdateAPIView):
+    serializer_class = SalonBookingCalendarDetailSerializer
     lookup_field = "uid"
     lookup_url_kwarg = "booking_uid"
 

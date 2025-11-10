@@ -2,14 +2,13 @@ from django.contrib.auth import get_user_model
 
 from rest_framework import serializers
 
-from apps.authentication.models import Account, AccountMembership
+from apps.authentication.models import Account
 from apps.salon.models import (
     Booking,
     Customer,
     Employee,
     Salon,
     Product,
-    SalonMedia,
     Service,
     Chair,
 )
@@ -28,7 +27,7 @@ class UserSlimSerializer(serializers.ModelSerializer):
 class CustomerSlimSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = ["uid", "name", "phone"]
+        fields = ["uid", "name", "phone", "created_at"]
 
 
 class EmployeeSlimSerializer(serializers.ModelSerializer):

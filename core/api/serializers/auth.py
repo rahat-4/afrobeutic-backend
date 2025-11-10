@@ -92,10 +92,10 @@ class MeSerializer(serializers.ModelSerializer):
     def get_role(self, obj):
         user = self.context.get("request").user
 
-        if user.is_superuser:
-            role = "Management Admin"
+        if user.is_admin and user.is_staff:
+            role = "MANAGEMENT_ADMIN"
         elif user.is_staff:
-            role = "Management Staff"
+            role = "MANAGEMENT_STAFF"
         else:
             account = self.context.get("request").account
             try:

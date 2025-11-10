@@ -191,7 +191,7 @@ class Employee(BaseModel):
         unique_together = ["account", "salon", "employee_id"]
 
     def __str__(self):
-        return f"UID{self.uid} - {self.name} - {self.salon.name}"
+        return f"UID{self.uid} - {self.name} - {self.salon.name} - {self.employee_id}"
 
 
 class Chair(BaseModel):
@@ -242,7 +242,10 @@ class Booking(BaseModel):
     booking_date = models.DateField()
     booking_time = models.TimeField()
     status = models.CharField(
-        max_length=15, choices=BookingStatus.choices, default=BookingStatus.PLACED
+        max_length=15,
+        choices=BookingStatus.choices,
+        default=BookingStatus.PLACED,
+        db_index=True,
     )
     notes = models.TextField(blank=True, null=True)
     booking_duration = models.DurationField(default=timedelta(minutes=30))

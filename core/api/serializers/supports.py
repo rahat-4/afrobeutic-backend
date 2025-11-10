@@ -20,8 +20,10 @@ class SupportTicketSerializer(serializers.ModelSerializer):
             "topic",
             "subject",
             "queries",
+            "status",
             "images",
             "uploaded_images",
+            "created_at",
         ]
 
     def validate_uploaded_images(self, value):

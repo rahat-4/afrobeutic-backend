@@ -23,7 +23,8 @@ from common.choices import CategoryType
 from common.serializers import (
     CustomerSlimSerializer,
     EmployeeSlimSerializer,
-    UserSlimSerializer,
+    ProductSlimSerializer,
+    ServiceSlimSerializer,
 )
 from common.models import Category
 from common.utils import get_or_create_category
@@ -363,13 +364,16 @@ class EmployeeSerializer(serializers.ModelSerializer):
         """
         Ensure employee_id is unique within the salon.
         """
+
         account = self.context["request"].account
         salon_uid = self.context["view"].kwargs.get("salon_uid")
         salon = get_object_or_404(Salon, uid=salon_uid, account=account)
         if self.instance:
             # Exclude current instance when checking for uniqueness
             if (
-                Employee.objects.filter(account=account, salon=salon, employee_id=value)
+                Employee.objects.filter(
+                    account=account, salon=salon, employee_id=value.upper()
+                )
                 .exclude(uid=self.instance.uid)
                 .exists()
             ):
@@ -378,7 +382,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
                 )
         else:
             if Employee.objects.filter(
-                account=account, salon=salon, employee_id=value
+                account=account, salon=salon, employee_id=value.upper()
             ).exists():
                 raise serializers.ValidationError(
                     "Employee ID must be unique within the salon."
@@ -393,6 +397,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         account = self.context["request"].account
         designation_name = validated_data.pop("designation")
+        employee_id = validated_data.pop("employee_id").upper()
 
         with transaction.atomic():
             # Handle category
@@ -400,7 +405,9 @@ class EmployeeSerializer(serializers.ModelSerializer):
                 designation_name, account, CategoryType.EMPLOYEE
             )
             validated_data["designation"] = designation
-            employee = Employee.objects.create(**validated_data)
+            employee = Employee.objects.create(
+                **validated_data, employee_id=employee_id
+            )
 
             return employee
 
@@ -463,7 +470,9 @@ class SalonChairSerializer(serializers.ModelSerializer):
         with transaction.atomic():
             # Handle category
             if chair_type:
-                chair_type = get_or_create_category(chair_type, account, CategoryType.CHAIR)
+                chair_type = get_or_create_category(
+                    chair_type, account, CategoryType.CHAIR
+                )
                 instance.type = chair_type
 
             # Update chair fields
@@ -608,175 +617,171 @@ class SalonChairSlimSerializer(serializers.ModelSerializer):
         fields = ["uid", "name", "type", "status", "created_at", "updated_at"]
 
 
-class SalonBookingSerializer(serializers.ModelSerializer):
-    customer_name = serializers.CharField(
-        write_only=True, required=False, allow_blank=True
-    )
-    customer_phone = serializers.CharField(
-        write_only=True, required=False, allow_blank=True
-    )
-    customer = SalonCustomerSlimSerializer(read_only=True)
-    chair = SalonChairSlimSerializer(read_only=True)
-
-    services = serializers.SlugRelatedField(
-        queryset=Service.objects.all(), many=True, slug_field="uid"
-    )
-    products = serializers.SlugRelatedField(
-        queryset=Product.objects.all(),
-        many=True,
-        slug_field="uid",
-        required=False,
-        allow_null=True,
-    )
-    employee = serializers.SlugRelatedField(
-        queryset=Employee.objects.all(),
-        slug_field="uid",
-        required=False,
-        allow_null=True,
-    )
-
-    cancelled_by = UserSlimSerializer(read_only=True)
-    images = serializers.ListField(
-        child=serializers.ImageField(),
-        write_only=True,
-        required=False,
-    )
+class BookingCalendarSlimSerializer(serializers.ModelSerializer):
+    services = ServiceSlimSerializer(many=True)
+    customer = CustomerSlimSerializer()
 
     class Meta:
         model = Booking
         fields = [
             "uid",
-            "customer_name",
-            "customer_phone",
-            "customer",
-            "booking_id",
             "booking_date",
             "booking_time",
-            "status",
+            "completed_at",
             "booking_duration",
+            "status",
+            "services",
+            "customer",
+            "created_at",
+        ]
+
+
+class SalonBookingCalendarSerializer(serializers.ModelSerializer):
+    bookings = BookingCalendarSlimSerializer(
+        many=True, read_only=True, source="employee_bookings"
+    )
+
+    class Meta:
+        model = Employee
+        fields = [
+            "uid",
+            "image",
+            "name",
+            "bookings",
+        ]
+
+
+class SalonBookingCalendarDetailSerializer(serializers.ModelSerializer):
+    customer = CustomerSlimSerializer()
+    services = ServiceSlimSerializer(many=True)
+    products = ProductSlimSerializer(many=True)
+
+    class Meta:
+        model = Booking
+        fields = [
+            "uid",
+            "booking_date",
+            "booking_time",
+            "booking_duration",
+            "completed_at",
+            "status",
             "notes",
-            "chair",
+            "customer",
             "services",
             "products",
-            "employee",
-            "images",
-            "cancelled_by",
-            "cancellation_reason",
-            "completed_at",
             "created_at",
-            "updated_at",
         ]
 
-    def to_representation(self, instance):
-        rep = super().to_representation(instance)
-        request = self.context.get("request")
+    # def to_representation(self, instance):
+    #     rep = super().to_representation(instance)
+    #     request = self.context.get("request")
 
-        rep["services"] = BookingServicesSlimSerializer(
-            instance.services.all(), many=True
-        ).data
+    #     rep["services"] = BookingServicesSlimSerializer(
+    #         instance.services.all(), many=True
+    #     ).data
 
-        rep["products"] = BookingProductsSlimSerializer(
-            instance.products.all(), many=True
-        ).data
+    #     rep["products"] = BookingProductsSlimSerializer(
+    #         instance.products.all(), many=True
+    #     ).data
 
-        rep["employee"] = (
-            {"uid": instance.employee.uid, "name": instance.employee.name}
-            if instance.employee
-            else None
-        )
+    #     rep["employee"] = (
+    #         {"uid": instance.employee.uid, "name": instance.employee.name}
+    #         if instance.employee
+    #         else None
+    #     )
 
-        # Fetch related images efficiently
-        images_qs = SalonMedia.objects.filter(booking=instance)
-        rep["images"] = [
-            {
-                **BookingImageSlimSerializer(img, context={"request": request}).data,
-                "image": (
-                    request.build_absolute_uri(img.image.url)
-                    if request
-                    else img.image.url
-                ),
-            }
-            for img in images_qs
-        ]
+    #     # Fetch related images efficiently
+    #     images_qs = SalonMedia.objects.filter(booking=instance)
+    #     rep["images"] = [
+    #         {
+    #             **BookingImageSlimSerializer(img, context={"request": request}).data,
+    #             "image": (
+    #                 request.build_absolute_uri(img.image.url)
+    #                 if request
+    #                 else img.image.url
+    #             ),
+    #         }
+    #         for img in images_qs
+    #     ]
 
-        return rep
+    #     return rep
 
-    def validate(self, attrs):
-        images = attrs.get("images", [])
-        status = attrs.get("status")
-        cancellation_reason = attrs.get("cancellation_reason")
+    # def validate(self, attrs):
+    #     images = attrs.get("images", [])
+    #     status = attrs.get("status")
+    #     cancellation_reason = attrs.get("cancellation_reason")
 
-        errors = {}
+    #     errors = {}
 
-        # Limit max image uploads
-        if len(images) > 3:
-            errors["images"] = [_("A maximum of three images can be uploaded.")]
+    #     # Limit max image uploads
+    #     if len(images) > 3:
+    #         errors["images"] = [_("A maximum of three images can be uploaded.")]
 
-        # Require reason when cancelled
-        if status == BookingStatus.CANCELLED and not cancellation_reason:
-            errors["cancellation_reason"] = [
-                _("Cancellation reason is required when booking is cancelled.")
-            ]
+    #     # Require reason when cancelled
+    #     if status == BookingStatus.CANCELLED and not cancellation_reason:
+    #         errors["cancellation_reason"] = [
+    #             _("Cancellation reason is required when booking is cancelled.")
+    #         ]
 
-        if errors:
-            raise serializers.ValidationError(errors)
-        return attrs
+    #     if errors:
+    #         raise serializers.ValidationError(errors)
+    #     return attrs
 
-    @transaction.atomic
-    def update(self, instance, validated_data):
-        """
-        Handles updating booking details, related customer, M2M fields, and images.
-        All updates occur in a single atomic transaction.
-        """
+    # @transaction.atomic
+    # def update(self, instance, validated_data):
+    #     """
+    #     Handles updating booking details, related customer, M2M fields, and images.
+    #     All updates occur in a single atomic transaction.
+    #     """
 
-        # Pop optional data
-        images = validated_data.pop("images", [])
-        services = validated_data.pop("services", None)
-        products = validated_data.pop("products", None)
-        employee = validated_data.pop("employee", None)
-        customer_name = validated_data.pop("customer_name", None)
-        customer_phone = validated_data.pop("customer_phone", None)
-        status = validated_data.get("status")
+    #     # Pop optional data
+    #     images = validated_data.pop("images", [])
+    #     services = validated_data.pop("services", None)
+    #     products = validated_data.pop("products", None)
+    #     employee = validated_data.pop("employee", None)
+    #     customer_name = validated_data.pop("customer_name", None)
+    #     customer_phone = validated_data.pop("customer_phone", None)
+    #     status = validated_data.get("status")
 
-        # --- Update or create customer ---
-        if customer_phone:
-            customer, _ = Customer.objects.get_or_create(
-                account=instance.account,
-                salon=instance.salon,
-                phone=customer_phone,
-                defaults={"name": customer_name or instance.customer.name},
-            )
-            instance.customer = customer
+    #     # --- Update or create customer ---
+    #     if customer_phone:
+    #         customer, _ = Customer.objects.get_or_create(
+    #             account=instance.account,
+    #             salon=instance.salon,
+    #             phone=customer_phone,
+    #             defaults={"name": customer_name or instance.customer.name},
+    #         )
+    #         instance.customer = customer
 
-        # --- Update basic fields ---
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
+    #     # --- Update basic fields ---
+    #     for attr, value in validated_data.items():
+    #         setattr(instance, attr, value)
 
-        # --- Handle cancellation ---
-        if status == BookingStatus.CANCELLED:
-            instance.cancelled_by = self.context["request"].user
+    #     # --- Handle cancellation ---
+    #     if status == BookingStatus.CANCELLED:
+    #         instance.cancelled_by = self.context["request"].user
 
-        # --- Update related fields ---
-        if services is not None:
-            instance.services.set(services)
-        if products is not None:
-            instance.products.set(products)
-        if employee is not None:
-            instance.employee = employee
+    #     # --- Update related fields ---
+    #     if services is not None:
+    #         instance.services.set(services)
+    #     if products is not None:
+    #         instance.products.set(products)
+    #     if employee is not None:
+    #         instance.employee = employee
 
-        instance.save()
+    #     instance.save()
 
-        # --- Handle images ---
-        if images:
-            # Delete old images
-            SalonMedia.objects.filter(booking=instance).delete()
+    #     # --- Handle images ---
+    #     if images:
+    #         # Delete old images
+    #         SalonMedia.objects.filter(booking=instance).delete()
 
-            # Bulk create new ones for efficiency
-            SalonMedia.objects.bulk_create(
-                [SalonMedia(booking=instance, image=image) for image in images]
-            )
+    #         # Bulk create new ones for efficiency
+    #         SalonMedia.objects.bulk_create(
+    #             [SalonMedia(booking=instance, image=image) for image in images]
+    #         )
 
-        return instance
+    #     return instance
 
 
 class SalonLookBookSerializer(serializers.ModelSerializer):
