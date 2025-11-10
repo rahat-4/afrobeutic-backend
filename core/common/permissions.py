@@ -45,13 +45,13 @@ class IsOwnerOrAdminOrStaff(RolePermission):
     )
 
 
-class IsManagementAdminOrStaff(BasePermission):
+class IsManagementStaff(BasePermission):
     def has_permission(self, request, view):
         user = getattr(request, "user", None)
         return bool(user and user.is_authenticated and getattr(user, "is_staff", False))
 
 
-class IsManagementAdmin(IsManagementAdminOrStaff):
+class IsManagementAdmin(BasePermission):
     def has_permission(self, request, view):
         user = getattr(request, "user", None)
         return bool(
@@ -59,4 +59,14 @@ class IsManagementAdmin(IsManagementAdminOrStaff):
             and user.is_authenticated
             and getattr(user, "is_admin", False)
             and getattr(user, "is_staff", False)
+        )
+
+
+class IsManagementAdminOrStaff(BasePermission):
+    def has_permission(self, request, view):
+        user = getattr(request, "user", None)
+        if not (user and user.is_authenticated and getattr(user, "is_staff", False)):
+            return False
+        return bool(
+            getattr(user, "is_admin", False) or getattr(user, "is_staff", False)
         )

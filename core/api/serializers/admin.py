@@ -3,6 +3,7 @@ from django.db import transaction
 
 from rest_framework import serializers
 
+from common.models import Media
 from common.serializers import (
     AccountSlimSerializer,
     UserSlimSerializer,
@@ -16,6 +17,7 @@ from common.serializers import (
 
 from apps.authentication.models import Account, AccountMembership
 from apps.salon.models import Salon, Service, Product, Employee, Booking
+from apps.support.models import SupportTicket
 
 User = get_user_model()
 
@@ -272,3 +274,30 @@ class AdminManagementSerializer(serializers.ModelSerializer):
             return "Admin"
         else:
             return "Staff"
+
+
+class AdminSupportTicketSerializer(serializers.ModelSerializer):
+    images = MediaSerializer(many=True, read_only=True, source="support_ticket_images")
+
+    class Meta:
+        model = SupportTicket
+        fields = [
+            "uid",
+            "level",
+            "topic",
+            "subject",
+            "queries",
+            "status",
+            "images",
+            "created_at",
+        ]
+
+        read_only_fields = [
+            "uid",
+            "level",
+            "topic",
+            "subject",
+            "queries",
+            "images",
+            "created_at",
+        ]

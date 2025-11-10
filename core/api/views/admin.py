@@ -8,7 +8,12 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import ValidationError
-from rest_framework.generics import ListAPIView, RetrieveAPIView
+from rest_framework.generics import (
+    ListAPIView,
+    ListCreateAPIView,
+    RetrieveAPIView,
+    RetrieveUpdateDestroyAPIView,
+)
 
 from common.filters import AdminManagementRoleFilter
 from common.permissions import IsManagementAdmin, IsManagementAdminOrStaff
@@ -17,6 +22,7 @@ from apps.authentication.choices import AccountMembershipRole
 from apps.authentication.emails import send_verification_email
 from apps.authentication.models import Account, AccountMembership
 from apps.salon.models import Salon, Service, Product, Employee, Booking
+from apps.support.models import SupportTicket
 
 from ..serializers.admin import (
     AdminRegistrationSerializer,
@@ -28,6 +34,7 @@ from ..serializers.admin import (
     AdminProductSerializer,
     AdminBookingSerializer,
     AdminManagementSerializer,
+    AdminSupportTicketSerializer,
 )
 
 User = get_user_model()
@@ -271,3 +278,33 @@ class AdminBookingListView(ListAPIView):
             return Booking.objects.filter(account=account, salon=salon)
         except Salon.DoesNotExist:
             raise ValidationError("Salon not found.")
+
+
+class AdminSupportTicketListView(ListAPIView):
+    serializer_class = AdminSupportTicketSerializer
+    permission_classes = [IsManagementAdminOrStaff]
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_fields = ["level", "topic", "status"]
+    search_fields = ["subject", "queries"]
+    ordering_fields = ["created_at"]
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        account = self.request.account
+
+        return SupportTicket.objects.filter(account=account)
+
+
+class AdminSupportTicketDetailView(RetrieveUpdateDestroyAPIView):
+    serializer_class = AdminSupportTicketSerializer
+    permission_classes = [IsManagementAdminOrStaff]
+
+    def get_object(self):
+        account = self.request.account
+        uid = self.kwargs.get("support_ticket_uid")
+
+        return SupportTicket.objects.get(uid=uid, account=account)
