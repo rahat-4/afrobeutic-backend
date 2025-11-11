@@ -304,3 +304,30 @@ class Booking(BaseModel):
 
     def __str__(self):
         return f"Booking {self.uid} - {self.customer.name} on {self.booking_date} at {self.booking_time}"
+
+
+class Lead(BaseModel):
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    email = models.EmailField(blank=True, null=True)
+    phone = PhoneNumberField(blank=True, null=True)
+    whatsapp = models.CharField(max_length=20, blank=True, null=True)
+    source = models.ForeignKey(
+        Category,
+        on_delete=models.PROTECT,
+        limit_choices_to={"category_type": "LEAD_SOURCE"},
+        related_name="lead_source",
+    )
+
+    # Fk
+    salon = models.ForeignKey(
+        Salon, on_delete=models.CASCADE, related_name="salon_leads"
+    )
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, related_name="account_leads"
+    )
+
+    def __str__(self):
+        return (
+            f"Lead {self.uid} - {self.first_name} {self.last_name} - {self.salon.name}"
+        )

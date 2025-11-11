@@ -2,6 +2,8 @@ import django_filters
 
 from django.contrib.auth import get_user_model
 
+from apps.salon.models import Lead
+
 User = get_user_model()
 
 
@@ -21,3 +23,17 @@ class AdminManagementRoleFilter(django_filters.FilterSet):
         elif value == "STAFF":
             return queryset.filter(is_admin=False, is_staff=True)
         return queryset
+
+
+class SalonLeadFilter(django_filters.FilterSet):
+    created_at = django_filters.DateFilter(field_name="created_at", lookup_expr="date")
+    source = django_filters.CharFilter(field_name="source__name", lookup_expr="iexact")
+
+    class Meta:
+        model = Lead
+        fields = {
+            "created_at": [
+                "gte",
+                "lte",
+            ],
+        }

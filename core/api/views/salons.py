@@ -15,15 +15,9 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.authentication.models import AccountMembership
 from apps.salon.choices import BookingStatus
-from apps.salon.models import (
-    Booking,
-    Chair,
-    Salon,
-    Service,
-    Product,
-    Employee,
-)
+from apps.salon.models import Booking, Chair, Salon, Service, Product, Employee, Lead
 
+from common.filters import SalonLeadFilter
 from common.permissions import (
     IsOwner,
     IsOwnerOrAdmin,
@@ -40,6 +34,7 @@ from ..serializers.salons import (
     SalonBookingCalendarSerializer,
     SalonBookingCalendarDetailSerializer,
     SalonLookBookSerializer,
+    SalonLeadSerializer,
 )
 
 
@@ -540,4 +535,63 @@ class SalonLookBookDetailView(RetrieveUpdateAPIView):
             account=account,
             account__members__user=user,
             status=BookingStatus.COMPLETED,
+        )
+
+
+class SalonLeadListView(ListCreateAPIView):
+    serializer_class = SalonLeadSerializer
+    permission_classes = [IsOwnerOrAdminOrStaff]
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_class = SalonLeadFilter
+    search_fields = [
+        "first_name",
+        "last_name",
+        "phone",
+        "whatsapp",
+        "email",
+        "source__name",
+    ]
+    ordering_fields = ["created_at"]
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        user = self.request.user
+        account = self.request.account
+        salon_uid = self.kwargs.get("salon_uid")
+
+        return Lead.objects.filter(
+            account=account, salon__uid=salon_uid, account__members__user=user
+        )
+
+    def perform_create(self, serializer):
+        account = self.request.account
+        salon_uid = self.kwargs.get("salon_uid")
+
+        salon = get_object_or_404(Salon, uid=salon_uid)
+
+        serializer.save(account=account, salon=salon)
+
+
+class SalonLeadDetailView(RetrieveUpdateAPIView):
+    serializer_class = SalonLeadSerializer
+    lookup_url_kwarg = "lead_uid"
+
+    def get_permissions(self):
+        if self.request.method in ["PUT", "PATCH"]:
+            self.permission_classes = [IsOwnerOrAdmin]
+        else:
+            self.permission_classes = [IsOwnerOrAdminOrStaff]
+
+        return super().get_permissions()
+
+    def get_object(self):
+        lead_uid = self.kwargs.get("lead_uid")
+
+        return get_object_or_404(
+            Lead,
+            uid=lead_uid,
         )

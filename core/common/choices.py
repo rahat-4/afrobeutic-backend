@@ -6,3 +6,4 @@ class CategoryType(models.TextChoices):
     PRODUCT = "PRODUCT", "Product"
     EMPLOYEE = "EMPLOYEE", "Employee"
     CHAIR = "CHAIR", "Chair"
+    LEAD_SOURCE = "LEAD_SOURCE", "Lead Source"

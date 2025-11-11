@@ -17,6 +17,7 @@ from apps.salon.models import (
     Employee,
     Customer,
     Booking,
+    Lead,
 )
 
 from common.choices import CategoryType
@@ -848,5 +849,106 @@ class SalonLookBookSerializer(serializers.ModelSerializer):
 
             for image in images:
                 SalonMedia.objects.create(booking=instance, image=image)
+
+            return instance
+
+
+class SalonLeadSerializer(serializers.ModelSerializer):
+    source = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = Lead
+        fields = [
+            "uid",
+            "first_name",
+            "last_name",
+            "email",
+            "phone",
+            "whatsapp",
+            "source",
+            "created_at",
+            "updated_at",
+        ]
+
+    def validate(self, attrs):
+        # Use incoming values or existing instance values when updating
+        phone = attrs.get("phone", getattr(self.instance, "phone", None))
+        whatsapp = attrs.get("whatsapp", getattr(self.instance, "whatsapp", None))
+
+        if not phone and not whatsapp:
+            raise serializers.ValidationError(
+                {"non_field_errors": ["Either phone or whatsapp must be provided."]}
+            )
+
+        account = self.context["request"].account
+        salon = None
+        salon_uid = self.context["view"].kwargs.get("salon_uid")
+        if salon_uid:
+            try:
+                salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+            except Exception:
+                salon = None
+
+        # Build base queryset filters
+        base_filters = {"account": account}
+        if salon:
+            base_filters["salon"] = salon
+
+        errors = {}
+
+        # Check uniqueness of phone
+        if phone:
+            qs = Lead.objects.filter(**base_filters, phone=phone)
+            if self.instance:
+                qs = qs.exclude(uid=self.instance.uid)
+            if qs.exists():
+                errors["phone"] = ["Lead with this phone already exists."]
+
+        # Check uniqueness of whatsapp
+        if whatsapp:
+            qs = Lead.objects.filter(**base_filters, whatsapp=whatsapp)
+            if self.instance:
+                qs = qs.exclude(uid=self.instance.uid)
+            if qs.exists():
+                errors["whatsapp"] = ["Lead with this whatsapp already exists."]
+
+        if errors:
+            raise serializers.ValidationError(errors)
+
+        return attrs
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep["source"] = instance.source.name
+        return rep
+
+    def create(self, validated_data):
+        account = self.context["request"].account
+        source = validated_data.pop("source")
+
+        with transaction.atomic():
+            # Handle category
+            source = get_or_create_category(source, account, CategoryType.LEAD_SOURCE)
+            validated_data["source"] = source
+            lead = Lead.objects.create(**validated_data)
+
+            return lead
+
+    def update(self, instance, validated_data):
+        account = self.context["request"].account
+        source = validated_data.pop("source", None)
+
+        with transaction.atomic():
+            # Handle category
+            if source:
+                source = get_or_create_category(
+                    source, account, CategoryType.LEAD_SOURCE
+                )
+                instance.source = source
+
+            # Update lead fields
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+            instance.save()
 
             return instance
