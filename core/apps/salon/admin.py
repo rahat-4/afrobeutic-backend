@@ -9,6 +9,8 @@ from .models import (
     Employee,
     Chair,
     Booking,
+    Lead,
+    Customer,
 )
 
 admin.site.register(Salon)
@@ -19,3 +21,5 @@ admin.site.register(Product)
 admin.site.register(Employee)
 admin.site.register(Chair)
 admin.site.register(Booking)
+admin.site.register(Lead)
+admin.site.register(Customer)

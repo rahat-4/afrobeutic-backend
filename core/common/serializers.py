@@ -11,6 +11,7 @@ from apps.salon.models import (
     Product,
     Service,
     Chair,
+    Lead,
 )
 
 from .models import Media
@@ -147,3 +148,21 @@ class MediaSerializer(serializers.ModelSerializer):
                 request.build_absolute_uri(obj.image.url) if request else obj.image.url
             )
         return None
+
+
+class LeadSlimSerializer(serializers.ModelSerializer):
+    source = serializers.CharField(source="source.name", read_only=True)
+
+    class Meta:
+        model = Lead
+        fields = [
+            "uid",
+            "first_name",
+            "last_name",
+            "email",
+            "phone",
+            "whatsapp",
+            "source",
+            "created_at",
+            "updated_at",
+        ]
