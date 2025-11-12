@@ -168,6 +168,7 @@ class SalonServiceSerializer(serializers.ModelSerializer):
         required=False,
     )
     category = serializers.CharField(write_only=True)
+    discount_price = serializers.CharField(read_only=True, source="final_price")
 
     class Meta:
         model = Service
@@ -175,14 +176,15 @@ class SalonServiceSerializer(serializers.ModelSerializer):
             "uid",
             "name",
             "category",
+            "discount_percentage",
             "price",
+            "discount_price",
             "description",
             "images",
             "uploaded_images",
             "service_duration",
             "available_time_slots",
             "gender_specific",
-            "discount_percentage",
             "assign_employees",
             "created_at",
             "updated_at",
@@ -656,6 +658,10 @@ class SalonBookingCalendarDetailSerializer(serializers.ModelSerializer):
     customer = CustomerSlimSerializer()
     services = ServiceSlimSerializer(many=True)
     products = ProductSlimSerializer(many=True)
+    total_products = serializers.IntegerField(source="products.count", read_only=True)
+    total_services = serializers.IntegerField(source="services.count", read_only=True)
+    total_price = serializers.SerializerMethodField()
+    final_price = serializers.SerializerMethodField()
 
     class Meta:
         model = Booking
@@ -669,9 +675,27 @@ class SalonBookingCalendarDetailSerializer(serializers.ModelSerializer):
             "notes",
             "customer",
             "services",
+            "total_services",
+            "total_price",
+            "final_price",
             "products",
+            "total_products",
             "created_at",
         ]
+
+    def get_total_price(self, obj):
+        total_price = 0
+        for service in obj.services.all():
+            total_price += service.price
+
+        return total_price
+
+    def get_final_price(self, obj):
+        final_price = 0
+        for service in obj.services.all():
+            final_price += service.final_price()
+
+        return final_price
 
     # def to_representation(self, instance):
     #     rep = super().to_representation(instance)

@@ -56,19 +56,21 @@ class SalonSlimSerializer(serializers.ModelSerializer):
 
 class ServiceSlimSerializer(serializers.ModelSerializer):
     category = serializers.CharField(source="category.name", read_only=True)
+    discount_price = serializers.CharField(read_only=True, source="final_price")
 
     class Meta:
         model = Service
         fields = [
             "uid",
             "name",
-            "category",
+            "discount_percentage",
             "price",
+            "discount_price",
+            "category",
             "description",
             "service_duration",
             "available_time_slots",
             "gender_specific",
-            "discount_percentage",
         ]
 
 

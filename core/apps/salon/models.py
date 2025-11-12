@@ -10,6 +10,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 from common.models import BaseModel, Category
 
 from apps.authentication.models import Account
+from decimal import Decimal, ROUND_HALF_UP
 
 from .choices import (
     SalonType,
@@ -137,6 +138,18 @@ class Service(BaseModel):
     assign_employees = models.ManyToManyField(
         "Employee", related_name="employee_services", blank=True
     )
+
+    def final_price(self):
+
+        price = Decimal(str(self.price))
+        if self.discount_percentage:
+            discount_pct = Decimal(str(self.discount_percentage))
+            discount_amount = (discount_pct / Decimal("100")) * price
+            final_price = price - discount_amount
+        else:
+            final_price = price
+
+        return final_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     def __str__(self):
         return f"UID: {self.uid} - {self.name} - {self.salon.name}"
