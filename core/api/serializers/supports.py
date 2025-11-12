@@ -14,7 +14,7 @@ from apps.support.models import (
 from common.choices import CategoryType
 from common.models import Media
 from common.serializers import (
-    MediaSerializer,
+    MediaSlimSerializer,
     SalonSlimSerializer,
     LeadSlimSerializer,
     CustomerSlimSerializer,
@@ -23,7 +23,9 @@ from common.utils import get_or_create_category
 
 
 class SupportTicketSerializer(serializers.ModelSerializer):
-    images = MediaSerializer(many=True, read_only=True, source="support_ticket_images")
+    images = MediaSlimSerializer(
+        many=True, read_only=True, source="support_ticket_images"
+    )
     uploaded_images = serializers.ListField(
         child=serializers.ImageField(), write_only=True, required=False
     )

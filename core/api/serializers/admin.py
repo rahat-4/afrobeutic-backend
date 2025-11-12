@@ -12,7 +12,7 @@ from common.serializers import (
     ChairSlimSerializer,
     ServiceSlimSerializer,
     ProductSlimSerializer,
-    MediaSerializer,
+    MediaSlimSerializer,
 )
 
 from apps.authentication.models import Account, AccountMembership
@@ -250,7 +250,7 @@ class AdminBookingSerializer(serializers.ModelSerializer):
 
     def get_images(self, obj):
         images = obj.booking_images.all()
-        return MediaSerializer(images, many=True, context=self.context).data
+        return MediaSlimSerializer(images, many=True, context=self.context).data
 
 
 class AdminManagementSerializer(serializers.ModelSerializer):
@@ -277,7 +277,9 @@ class AdminManagementSerializer(serializers.ModelSerializer):
 
 
 class AdminSupportTicketSerializer(serializers.ModelSerializer):
-    images = MediaSerializer(many=True, read_only=True, source="support_ticket_images")
+    images = MediaSlimSerializer(
+        many=True, read_only=True, source="support_ticket_images"
+    )
 
     class Meta:
         model = SupportTicket

@@ -137,7 +137,7 @@ class AccountSlimSerializer(serializers.ModelSerializer):
         return membership.role if membership else None
 
 
-class MediaSerializer(serializers.ModelSerializer):
+class MediaSlimSerializer(serializers.ModelSerializer):
     class Meta:
         model = Media
         fields = ["uid", "image", "created_at", "updated_at"]
