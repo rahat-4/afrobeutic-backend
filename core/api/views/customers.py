@@ -3,6 +3,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 
 from rest_framework.generics import ListAPIView, RetrieveAPIView, get_object_or_404
 
+from apps.salon.choices import CustomerType
 from apps.salon.models import Customer
 
 from common.permissions import IsOwnerOrAdminOrStaff
@@ -14,18 +15,18 @@ class CustomerListView(ListAPIView):
     serializer_class = CustomerSerializer
     permission_classes = [IsOwnerOrAdminOrStaff]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    search_fields = ["name", "phone", "salon__name"]
-    ordering_fields = ["name", "created_at", "updated_at"]
-    ordering = ["-created_at"]
+    search_fields = ["first_name", "last_name", "email", "phone", "salon__name"]
     filterset_fields = {
         "created_at": ["gte", "lte"],
         "updated_at": ["gte", "lte"],
         "salon__uid": ["exact"],
     }
+    ordering_fields = ["first_name", "last_name", "created_at", "updated_at"]
+    ordering = ["-created_at"]
 
     def get_queryset(self):
         account = self.request.account
-        return Customer.objects.filter(account=account)
+        return Customer.objects.filter(account=account, type=CustomerType.CUSTOMER)
 
 
 class CustomerDetailView(RetrieveAPIView):

@@ -1,27 +1,31 @@
 from django.urls import path
 
 from ..views.supports import (
-    SupportTicketListView,
-    SupportTicketDetailView,
-    AccountSupportTicketListView,
-    AccountSupportTicketDetailView,
+    AccountEnquiryListView,
+    AccountEnquiryDetailView,
+    CustomerEnquiryListView,
+    CustomerEnquiryDetailView,
 )
 
 urlpatterns = [
     path(
-        "/account/<uuid:account_support_ticket_uid>",
-        AccountSupportTicketDetailView.as_view(),
-        name="account-support-ticket.detail",
+        "/customer-enquiries/<uuid:customer_enquiry_uid>",
+        CustomerEnquiryDetailView.as_view(),
+        name="customer-enquiry.detail",
     ),
     path(
-        "/account",
-        AccountSupportTicketListView.as_view(),
-        name="account-support-ticket.list",
+        "/customer-enquiries",
+        CustomerEnquiryListView.as_view(),
+        name="customer-enquiry.list",
     ),
     path(
-        "/<uuid:support_ticket_uid>",
-        SupportTicketDetailView.as_view(),
-        name="support-ticket.detail",
+        "/account-enquiries/<uuid:account_enquiry_uid>",
+        AccountEnquiryDetailView.as_view(),
+        name="account-enquiry.detail",
     ),
-    path("", SupportTicketListView.as_view(), name="support-ticket.list"),
+    path(
+        "/account-enquiries",
+        AccountEnquiryListView.as_view(),
+        name="account-enquiry.list",
+    ),
 ]

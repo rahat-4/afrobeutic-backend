@@ -7,18 +7,19 @@ from rest_framework.generics import (
     RetrieveUpdateDestroyAPIView,
 )
 
+from common.filters import CustomerEnquiryFilter
 from common.permissions import IsOwnerOrAdminOrStaff, IsOwnerOrAdmin
 
 from apps.support.models import SupportTicket, AccountSupportTicket
 
 from ..serializers.supports import (
-    SupportTicketSerializer,
-    AccountSupportTicketSerializer,
+    AccountEnquirySerializer,
+    CustomerEnquirySerializer,
 )
 
 
-class SupportTicketListView(ListCreateAPIView):
-    serializer_class = SupportTicketSerializer
+class AccountEnquiryListView(ListCreateAPIView):
+    serializer_class = AccountEnquirySerializer
 
     def get_permissions(self):
         if self.request.method == "POST":
@@ -41,8 +42,8 @@ class SupportTicketListView(ListCreateAPIView):
         serializer.save(account=account)
 
 
-class SupportTicketDetailView(RetrieveDestroyAPIView):
-    serializer_class = SupportTicketSerializer
+class AccountEnquiryDetailView(RetrieveDestroyAPIView):
+    serializer_class = AccountEnquirySerializer
     permission_classes = [IsOwnerOrAdminOrStaff]
 
     def get_permissions(self):
@@ -56,30 +57,27 @@ class SupportTicketDetailView(RetrieveDestroyAPIView):
     def get_object(self):
         user = self.request.user
         account = self.request.account
-        uid = self.kwargs.get("support_ticket_uid")
+        uid = self.kwargs.get("account_enquiry_uid")
 
         return SupportTicket.objects.get(
             uid=uid, account=account, account__members__user=user
         )
 
 
-class AccountSupportTicketListView(ListCreateAPIView):
-    serializer_class = AccountSupportTicketSerializer
+class CustomerEnquiryListView(ListCreateAPIView):
+    serializer_class = CustomerEnquirySerializer
     permission_classes = [IsOwnerOrAdminOrStaff]
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,
         filters.OrderingFilter,
     ]
-    filterset_fields = ["status", "type", "lead__source__name"]
+    filterset_class = CustomerEnquiryFilter
     search_fields = [
-        "customer__name",
+        "customer__first_name",
+        "customer__last_name",
+        "customer__email",
         "customer__phone",
-        "lead__first_name",
-        "lead__last_name",
-        "lead__email",
-        "lead__phone",
-        "lead__whatsapp",
     ]
     ordering_fields = ["created_at"]
     ordering = ["-created_at"]
@@ -98,8 +96,8 @@ class AccountSupportTicketListView(ListCreateAPIView):
         serializer.save(account=account)
 
 
-class AccountSupportTicketDetailView(RetrieveUpdateDestroyAPIView):
-    serializer_class = AccountSupportTicketSerializer
+class CustomerEnquiryDetailView(RetrieveUpdateDestroyAPIView):
+    serializer_class = CustomerEnquirySerializer
 
     def get_permissions(self):
         if self.request.method in ["PUT", "PATCH", "DELETE"]:
@@ -112,7 +110,7 @@ class AccountSupportTicketDetailView(RetrieveUpdateDestroyAPIView):
     def get_object(self):
         user = self.request.user
         account = self.request.account
-        uid = self.kwargs.get("account_support_ticket_uid")
+        uid = self.kwargs.get("customer_enquiry_uid")
 
         return AccountSupportTicket.objects.get(
             uid=uid, account=account, account__members__user=user

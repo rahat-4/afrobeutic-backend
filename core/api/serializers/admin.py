@@ -276,7 +276,7 @@ class AdminManagementSerializer(serializers.ModelSerializer):
             return "Staff"
 
 
-class AdminSupportTicketSerializer(serializers.ModelSerializer):
+class AdminAccountEnquirySerializer(serializers.ModelSerializer):
     images = MediaSlimSerializer(
         many=True, read_only=True, source="support_ticket_images"
     )

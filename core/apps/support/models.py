@@ -3,7 +3,7 @@ from django.db import models
 from common.models import BaseModel
 
 from apps.authentication.models import Account
-from apps.salon.models import Salon, Customer, Lead
+from apps.salon.models import Salon, Customer
 
 from .choices import (
     SupportTicketTopic,
@@ -55,18 +55,9 @@ class AccountSupportTicket(BaseModel):
     )
 
     # Fk
-    lead = models.ForeignKey(
-        Lead,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="lead_queries",
-    )
     customer = models.ForeignKey(
         Customer,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        on_delete=models.CASCADE,
         related_name="customer_queries",
     )
     salon = models.ForeignKey(

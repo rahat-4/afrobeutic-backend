@@ -6,7 +6,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.generics import get_object_or_404
 
-from apps.salon.choices import BookingStatus
+from apps.salon.choices import BookingStatus, CustomerType
 from apps.salon.models import (
     Salon,
     OpeningHours,
@@ -17,7 +17,6 @@ from apps.salon.models import (
     Employee,
     Customer,
     Booking,
-    Lead,
 )
 
 from common.choices import CategoryType
@@ -488,9 +487,28 @@ class SalonChairSerializer(serializers.ModelSerializer):
 
 
 class SalonCustomerSlimSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Customer
-        fields = ["uid", "name", "phone", "created_at", "updated_at"]
+        fields = [
+            "uid",
+            "first_name",
+            "last_name",
+            "email",
+            "phone",
+            "source",
+            "created_at",
+            "updated_at",
+        ]
+
+        extra_kwargs = {
+            "source": {"required": False, "allow_null": True},
+        }
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation["source"] = instance.source.name if instance.source else None
+        return representation
 
 
 class BookingImageSlimSerializer(serializers.ModelSerializer):
@@ -590,12 +608,26 @@ class SalonChairBookingSerializer(serializers.ModelSerializer):
         services = validated_data.pop("services", [])
         products = validated_data.pop("products", [])
         employee = validated_data.pop("employee", None)
+        account = self.context["request"].account
 
         with transaction.atomic():
+            customer_source = customer.get("source", "Booking")
+
+            source = get_or_create_category(
+                customer_source, account, category_type=CategoryType.CUSTOMER_SOURCE
+            )
+
             customer_obj, _ = Customer.objects.get_or_create(
                 account=validated_data["account"],
                 phone=customer["phone"],
-                defaults={"name": customer["name"], "salon": validated_data["salon"]},
+                defaults={
+                    "first_name": customer["first_name"],
+                    "last_name": customer["last_name"],
+                    "email": customer.get("email"),
+                    "source": source,
+                    "type": CustomerType.CUSTOMER,
+                    "salon": validated_data["salon"],
+                },
             )
             validated_data["customer"] = customer_obj
 
@@ -656,7 +688,7 @@ class SalonBookingCalendarSerializer(serializers.ModelSerializer):
 
 
 class SalonBookingCalendarDetailSerializer(serializers.ModelSerializer):
-    customer = CustomerSlimSerializer()
+    customer = CustomerSlimSerializer(read_only=True)
     employee = serializers.SlugRelatedField(
         slug_field="uid",
         queryset=Employee.objects.all(),
@@ -773,17 +805,7 @@ class SalonBookingCalendarDetailSerializer(serializers.ModelSerializer):
         services = validated_data.pop("services", None)
         products = validated_data.pop("products", None)
         employee = validated_data.pop("employee", None)
-        customer = validated_data.pop("customer", None)
         status = validated_data.get("status")
-
-        if customer:
-            customer, _ = Customer.objects.get_or_create(
-                account=instance.account,
-                salon=instance.salon,
-                phone=customer["phone"],
-                defaults={"name": customer["name"] or instance.customer.name},
-            )
-            instance.customer = customer
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -877,64 +899,35 @@ class SalonLookBookSerializer(serializers.ModelSerializer):
             return instance
 
 
+# TODO: Remove it later
 class SalonLeadSerializer(serializers.ModelSerializer):
     source = serializers.CharField(write_only=True)
 
     class Meta:
-        model = Lead
+        model = Customer
         fields = [
             "uid",
             "first_name",
             "last_name",
             "email",
             "phone",
-            "whatsapp",
             "source",
             "created_at",
             "updated_at",
         ]
 
     def validate(self, attrs):
-        # Use incoming values or existing instance values when updating
-        phone = attrs.get("phone", getattr(self.instance, "phone", None))
-        whatsapp = attrs.get("whatsapp", getattr(self.instance, "whatsapp", None))
-
-        if not phone and not whatsapp:
-            raise serializers.ValidationError(
-                {"non_field_errors": ["Either phone or whatsapp must be provided."]}
-            )
-
+        phone = attrs.get("phone")
         account = self.context["request"].account
-        salon = None
-        salon_uid = self.context["view"].kwargs.get("salon_uid")
-        if salon_uid:
-            try:
-                salon = get_object_or_404(Salon, uid=salon_uid, account=account)
-            except Exception:
-                salon = None
-
-        # Build base queryset filters
-        base_filters = {"account": account}
-        if salon:
-            base_filters["salon"] = salon
 
         errors = {}
 
         # Check uniqueness of phone
-        if phone:
-            qs = Lead.objects.filter(**base_filters, phone=phone)
-            if self.instance:
-                qs = qs.exclude(uid=self.instance.uid)
-            if qs.exists():
-                errors["phone"] = ["Lead with this phone already exists."]
-
-        # Check uniqueness of whatsapp
-        if whatsapp:
-            qs = Lead.objects.filter(**base_filters, whatsapp=whatsapp)
-            if self.instance:
-                qs = qs.exclude(uid=self.instance.uid)
-            if qs.exists():
-                errors["whatsapp"] = ["Lead with this whatsapp already exists."]
+        qs = Customer.objects.filter(account=account, phone=phone)
+        if self.instance:
+            qs = qs.exclude(uid=self.instance.uid)
+        if qs.exists():
+            errors["phone"] = ["Lead with this phone already exists."]
 
         if errors:
             raise serializers.ValidationError(errors)
@@ -952,9 +945,11 @@ class SalonLeadSerializer(serializers.ModelSerializer):
 
         with transaction.atomic():
             # Handle category
-            source = get_or_create_category(source, account, CategoryType.LEAD_SOURCE)
+            source = get_or_create_category(
+                source, account, CategoryType.CUSTOMER_SOURCE
+            )
             validated_data["source"] = source
-            lead = Lead.objects.create(**validated_data)
+            lead = Customer.objects.create(**validated_data)
 
             return lead
 
@@ -966,7 +961,7 @@ class SalonLeadSerializer(serializers.ModelSerializer):
             # Handle category
             if source:
                 source = get_or_create_category(
-                    source, account, CategoryType.LEAD_SOURCE
+                    source, account, CategoryType.CUSTOMER_SOURCE
                 )
                 instance.source = source
 

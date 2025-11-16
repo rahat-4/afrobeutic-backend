@@ -34,7 +34,7 @@ from ..serializers.admin import (
     AdminProductSerializer,
     AdminBookingSerializer,
     AdminManagementSerializer,
-    AdminSupportTicketSerializer,
+    AdminAccountEnquirySerializer,
 )
 
 User = get_user_model()
@@ -254,7 +254,10 @@ class AdminBookingListView(ListAPIView):
     ]
     search_fields = [
         "booking_id",
-        "customer__name",
+        "customer__first_name",
+        "customer__last_name",
+        "customer__phone",
+        "customer__email",
         "chair__name",
         "employee__name",
         "employee__employee_id",
@@ -280,8 +283,8 @@ class AdminBookingListView(ListAPIView):
             raise ValidationError("Salon not found.")
 
 
-class AdminSupportTicketListView(ListAPIView):
-    serializer_class = AdminSupportTicketSerializer
+class AdminAccountEnquiryListView(ListAPIView):
+    serializer_class = AdminAccountEnquirySerializer
     permission_classes = [IsManagementAdminOrStaff]
     filter_backends = [
         DjangoFilterBackend,
@@ -299,12 +302,12 @@ class AdminSupportTicketListView(ListAPIView):
         return SupportTicket.objects.filter(account=account)
 
 
-class AdminSupportTicketDetailView(RetrieveUpdateDestroyAPIView):
-    serializer_class = AdminSupportTicketSerializer
+class AdminAccountEnquiryDetailView(RetrieveUpdateDestroyAPIView):
+    serializer_class = AdminAccountEnquirySerializer
     permission_classes = [IsManagementAdminOrStaff]
 
     def get_object(self):
         account = self.request.account
-        uid = self.kwargs.get("support_ticket_uid")
+        uid = self.kwargs.get("account_enquiry_uid")
 
         return SupportTicket.objects.get(uid=uid, account=account)

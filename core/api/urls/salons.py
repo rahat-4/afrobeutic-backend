@@ -22,11 +22,13 @@ from ..views.salons import (
 )
 
 urlpatterns = [
+    # TODO: Remove it later
     path(
         "/<uuid:salon_uid>/leads/<uuid:lead_uid>",
         SalonLeadDetailView.as_view(),
         name="salon-lead-detail",
     ),
+    # TODO: Remove it later
     path(
         "/<uuid:salon_uid>/leads",
         SalonLeadListView.as_view(),

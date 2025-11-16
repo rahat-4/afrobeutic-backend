@@ -14,8 +14,16 @@ from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.authentication.models import AccountMembership
-from apps.salon.choices import BookingStatus
-from apps.salon.models import Booking, Chair, Salon, Service, Product, Employee, Lead
+from apps.salon.choices import BookingStatus, CustomerType
+from apps.salon.models import (
+    Booking,
+    Chair,
+    Salon,
+    Service,
+    Product,
+    Employee,
+    Customer,
+)
 
 from common.filters import SalonLeadFilter
 from common.permissions import (
@@ -357,13 +365,20 @@ class SalonChairBookingListView(ListCreateAPIView):
         filters.OrderingFilter,
     ]
 
-    search_fields = ["customer__name", "employee__name", "booking_id"]
-    ordering_fields = ["created_at", "booking_date", "booking_time"]
-    ordering = ["-created_at"]
+    search_fields = [
+        "customer__first_name",
+        "customer__last_name",
+        "customer__email",
+        "customer__phone",
+        "employee__name",
+        "booking_id",
+    ]
     filterset_fields = {
         "booking_date": ["exact", "gte", "lte"],
         "status": ["exact"],
     }
+    ordering_fields = ["created_at", "booking_date", "booking_time"]
+    ordering = ["-created_at"]
 
     def get_queryset(self):
         user = self.request.user
@@ -421,6 +436,7 @@ class SalonBookingCalendarListView(ListAPIView):
 
         # Get date from query params, default to today
         date_str = self.request.query_params.get("date")
+        status = self.request.query_params.get("status")
 
         if date_str:
             try:
@@ -435,23 +451,29 @@ class SalonBookingCalendarListView(ListAPIView):
             BookingStatus.INPROGRESS,
             BookingStatus.RESCHEDULED,
             BookingStatus.COMPLETED,
+            BookingStatus.CANCELLED,
+            BookingStatus.ABSENT,
         ]
 
+        # If status is invalid, ignore it (don’t filter by status)
+        if status not in allowed_statuses:
+            status = None
+
+        # Build the booking queryset
+        booking_qs = Booking.objects.filter(
+            account=account,
+            salon__uid=salon_uid,
+            booking_date=target_date,
+        )
+        if status:
+            booking_qs = booking_qs.filter(status=status)
+
+        # Return employees with prefetch of filtered bookings
         return Employee.objects.filter(
             salon__uid=salon_uid,
             account=account,
             account__members__user=user,
-        ).prefetch_related(
-            Prefetch(
-                "employee_bookings",
-                queryset=Booking.objects.filter(
-                    status__in=allowed_statuses,
-                    account=account,
-                    salon__uid=salon_uid,
-                    booking_date=target_date,
-                ),
-            )
-        )
+        ).prefetch_related(Prefetch("employee_bookings", queryset=booking_qs))
 
 
 class SalonBookingCalendarDetailView(RetrieveUpdateAPIView):
@@ -490,9 +512,15 @@ class SalonLookBookListView(ListAPIView):
         filters.SearchFilter,
         filters.OrderingFilter,
     ]
+    search_fields = [
+        "customer__first_name",
+        "customer__last_name",
+        "customer__email",
+        "customer__phone",
+        "booking_id",
+    ]
     ordering_fields = ["created_at", "booking_date"]
     ordering = ["-created_at"]
-    search_fields = ["customer__name", "customer__phone", "booking_id"]
 
     def get_queryset(self):
         user = self.request.user
@@ -538,6 +566,7 @@ class SalonLookBookDetailView(RetrieveUpdateAPIView):
         )
 
 
+# TODO: Remove it later
 class SalonLeadListView(ListCreateAPIView):
     serializer_class = SalonLeadSerializer
     permission_classes = [IsOwnerOrAdminOrStaff]
@@ -551,7 +580,6 @@ class SalonLeadListView(ListCreateAPIView):
         "first_name",
         "last_name",
         "phone",
-        "whatsapp",
         "email",
         "source__name",
     ]
@@ -563,8 +591,11 @@ class SalonLeadListView(ListCreateAPIView):
         account = self.request.account
         salon_uid = self.kwargs.get("salon_uid")
 
-        return Lead.objects.filter(
-            account=account, salon__uid=salon_uid, account__members__user=user
+        return Customer.objects.filter(
+            account=account,
+            salon__uid=salon_uid,
+            account__members__user=user,
+            type=CustomerType.LEAD,
         )
 
     def perform_create(self, serializer):
@@ -576,6 +607,7 @@ class SalonLeadListView(ListCreateAPIView):
         serializer.save(account=account, salon=salon)
 
 
+# TODO: Remove it later
 class SalonLeadDetailView(RetrieveUpdateAPIView):
     serializer_class = SalonLeadSerializer
     lookup_url_kwarg = "lead_uid"
@@ -592,6 +624,6 @@ class SalonLeadDetailView(RetrieveUpdateAPIView):
         lead_uid = self.kwargs.get("lead_uid")
 
         return get_object_or_404(
-            Lead,
+            Customer,
             uid=lead_uid,
         )

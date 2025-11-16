@@ -11,7 +11,6 @@ from apps.salon.models import (
     Product,
     Service,
     Chair,
-    Lead,
 )
 
 from .models import Media
@@ -26,9 +25,19 @@ class UserSlimSerializer(serializers.ModelSerializer):
 
 
 class CustomerSlimSerializer(serializers.ModelSerializer):
+    source = serializers.CharField(source="source.name", read_only=True)
+
     class Meta:
         model = Customer
-        fields = ["uid", "name", "phone", "created_at"]
+        fields = [
+            "uid",
+            "first_name",
+            "last_name",
+            "email",
+            "source",
+            "phone",
+            "created_at",
+        ]
 
 
 class EmployeeSlimSerializer(serializers.ModelSerializer):
@@ -156,15 +165,30 @@ class LeadSlimSerializer(serializers.ModelSerializer):
     source = serializers.CharField(source="source.name", read_only=True)
 
     class Meta:
-        model = Lead
+        model = Customer
         fields = [
             "uid",
             "first_name",
             "last_name",
             "email",
             "phone",
-            "whatsapp",
             "source",
             "created_at",
             "updated_at",
+        ]
+
+
+class LeadCustomerSerializer(serializers.ModelSerializer):
+    source = serializers.CharField(source="source.name", read_only=True)
+
+    class Meta:
+        model = Customer
+        fields = [
+            "uid",
+            "first_name",
+            "last_name",
+            "email",
+            "phone",
+            "source",
+            "created_at",
         ]

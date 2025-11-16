@@ -1,10 +1,15 @@
 from django_filters.rest_framework import DjangoFilterBackend
 
+from rest_framework import filters
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+
+from apps.salon.models import Customer
 
 from .models import Category
+from .serializers import LeadCustomerSerializer
 
 
 class CategoryListView(ListAPIView):
@@ -29,3 +34,11 @@ class CategoryListView(ListAPIView):
         queryset = self.get_queryset()
         names = queryset.values_list("name", flat=True)
         return Response(list(names))
+
+
+class LeadCustomerListView(ListAPIView):
+    queryset = Customer.objects.all()
+    serializer_class = LeadCustomerSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    search_fields = ["phone"]

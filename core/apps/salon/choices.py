@@ -47,3 +47,8 @@ class ChairStatus(models.TextChoices):
     AVAILABLE = "AVAILABLE", _("Available")
     MAINTENANCE = "MAINTENANCE", _("Maintenance")
     OUT_OF_ORDER = "OUT_OF_ORDER", _("Out of Order")
+
+
+class CustomerType(models.TextChoices):
+    LEAD = "LEAD", _("Lead")
+    CUSTOMER = "CUSTOMER", _("Customer")
