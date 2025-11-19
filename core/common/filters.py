@@ -10,7 +10,10 @@ User = get_user_model()
 
 class AdminManagementRoleFilter(django_filters.FilterSet):
     role = django_filters.ChoiceFilter(
-        choices=[("ADMIN", "ADMIN"), ("STAFF", "STAFF")],
+        choices=[
+            ("MANAGEMENT_ADMIN", "MANAGEMENT_ADMIN"),
+            ("MANAGEMENT_STAFF", "MANAGEMENT_STAFF"),
+        ],
         method="filter_by_role",
     )
 
@@ -19,9 +22,9 @@ class AdminManagementRoleFilter(django_filters.FilterSet):
         fields = ["role", "country"]
 
     def filter_by_role(self, queryset, _name, value):
-        if value == "ADMIN":
+        if value == "MANAGEMENT_ADMIN":
             return queryset.filter(is_admin=True, is_staff=True)
-        elif value == "STAFF":
+        elif value == "MANAGEMENT_STAFF":
             return queryset.filter(is_admin=False, is_staff=True)
         return queryset
 

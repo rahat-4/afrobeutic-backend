@@ -23,7 +23,9 @@ User = get_user_model()
 
 
 class AdminRegistrationSerializer(serializers.ModelSerializer):
-    role = serializers.ChoiceField(choices=["ADMIN", "STAFF"], write_only=True)
+    role = serializers.ChoiceField(
+        choices=["MANAGEMENT_ADMIN", "MANAGEMENT_STAFF"], write_only=True
+    )
     password = serializers.CharField(write_only=True, min_length=8)
     confirm_password = serializers.CharField(write_only=True, min_length=8)
 
@@ -61,10 +63,10 @@ class AdminRegistrationSerializer(serializers.ModelSerializer):
 
             user = User(**validated_data)
             user.is_active = False  # User must verify email to activate account
-            if role == "ADMIN":
+            if role == "MANAGEMENT_ADMIN":
                 user.is_admin = True
                 user.is_staff = True
-            elif role == "STAFF":
+            elif role == "MANAGEMENT_STAFF":
                 user.is_staff = True
 
             user.set_password(password)
@@ -271,9 +273,9 @@ class AdminManagementSerializer(serializers.ModelSerializer):
 
     def get_role(self, obj):
         if obj.is_admin and obj.is_staff:
-            return "Admin"
+            return "MANAGEMENT_ADMIN"
         else:
-            return "Staff"
+            return "MANAGEMENT_STAFF"
 
 
 class AdminAccountEnquirySerializer(serializers.ModelSerializer):

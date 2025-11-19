@@ -20,6 +20,15 @@ from ..serializers.supports import (
 
 class AccountEnquiryListView(ListCreateAPIView):
     serializer_class = AccountEnquirySerializer
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_fields = ["status", "level", "topic"]
+    search_fields = ["subject", "queries"]
+    ordering_fields = ["created_at"]
+    ordering = ["-created_at"]
 
     def get_permissions(self):
         if self.request.method == "POST":
