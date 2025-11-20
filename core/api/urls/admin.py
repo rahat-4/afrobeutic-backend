@@ -13,46 +13,52 @@ from ..views.admin import (
     AdminEmployeeListView,
     AdminBookingListView,
     AdminManagementListView,
+    AdminSubscriptionPlanListView,
 )
 
 urlpatterns = [
     path(
-        "/salons/<uuid:salon_uid>/bookings",
+        "/subscription-plans",
+        AdminSubscriptionPlanListView.as_view(),
+        name="admin.subscription-plans",
+    ),
+    path(
+        "/accounts/<uuid:account_uid>/salons/<uuid:salon_uid>/bookings",
         AdminBookingListView.as_view(),
-        name="admin.salon-bookings",
+        name="admin.account-salon-bookings",
     ),
     path(
-        "/salons/<uuid:salon_uid>/employees",
+        "/accounts/<uuid:account_uid>/salons/<uuid:salon_uid>/employees",
         AdminEmployeeListView.as_view(),
-        name="admin.salon-employees",
+        name="admin.account-salon-employees",
     ),
     path(
-        "/salons/<uuid:salon_uid>/products",
+        "/accounts/<uuid:account_uid>/salons/<uuid:salon_uid>/products",
         AdminProductListView.as_view(),
-        name="admin.salon-products",
+        name="admin.account-salon-products",
     ),
     path(
-        "/salons/<uuid:salon_uid>/services",
+        "/accounts/<uuid:account_uid>/salons/<uuid:salon_uid>/services",
         AdminServiceListView.as_view(),
-        name="admin.salon-services",
+        name="admin.account-salon-services",
     ),
     path(
-        "/salons/<uuid:salon_uid>",
+        "/accounts/<uuid:account_uid>/salons/<uuid:salon_uid>",
         AdminSalonDetailView.as_view(),
-        name="admin.salon-detail",
+        name="admin.account-salon-detail",
     ),
     path(
-        "/salons",
+        "/accounts/<uuid:account_uid>/salons",
         AdminSalonListView.as_view(),
-        name="admin.salons",
+        name="admin.account-salons",
     ),
     path(
-        "/account-enquiries/<uuid:account_enquiry_uid>",
+        "/accounts/<uuid:account_uid>/enquiries/<uuid:account_enquiry_uid>",
         AdminAccountEnquiryDetailView.as_view(),
         name="admin.account-enquiry-detail",
     ),
     path(
-        "/account-enquiries",
+        "/accounts/<uuid:account_uid>/enquiries",
         AdminAccountEnquiryListView.as_view(),
         name="admin.account-enquiry-list",
     ),

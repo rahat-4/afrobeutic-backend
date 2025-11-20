@@ -35,6 +35,7 @@ from ..serializers.admin import (
     AdminBookingSerializer,
     AdminManagementSerializer,
     AdminAccountEnquirySerializer,
+    AdminSubscriptionPlanSerializer,
 )
 
 User = get_user_model()
@@ -134,15 +135,15 @@ class AdminSalonListView(ListAPIView):
         filters.SearchFilter,
         filters.OrderingFilter,
     ]
+    filterset_fields = ["status", "salon_type"]
     search_fields = ["name"]
     ordering_fields = ["created_at", "name"]
     ordering = ["-created_at"]
-    filterset_fields = ["status", "salon_type"]
 
     def get_queryset(self):
-        account = self.request.account
+        account_uid = self.kwargs.get("account_uid")
 
-        return Salon.objects.filter(account=account)
+        return Salon.objects.filter(account__uid=account_uid)
 
 
 class AdminSalonDetailView(RetrieveAPIView):
@@ -151,11 +152,11 @@ class AdminSalonDetailView(RetrieveAPIView):
     permission_classes = [IsManagementAdminOrStaff]
 
     def get_object(self):
-        account = self.request.account
+        account_uid = self.kwargs.get("account_uid")
         salon_uid = self.kwargs.get("salon_uid")
 
         try:
-            salon = Salon.objects.get(uid=salon_uid, account=account)
+            salon = Salon.objects.get(uid=salon_uid, account__uid=account_uid)
             return salon
         except Salon.DoesNotExist:
             raise ValidationError("Salon not found.")
@@ -169,6 +170,7 @@ class AdminServiceListView(ListAPIView):
         filters.SearchFilter,
         filters.OrderingFilter,
     ]
+    filterset_fields = ["gender_specific", "category__name"]
     search_fields = ["name", "assign_employees__name", "assign_employees__employee_id"]
     ordering_fields = [
         "created_at",
@@ -178,18 +180,16 @@ class AdminServiceListView(ListAPIView):
         "service_duration",
     ]
     ordering = ["-created_at"]
-    filterset_fields = ["gender_specific", "category__name"]
 
     def get_queryset(self):
-        account = self.request.account
-
+        account_uid = self.kwargs.get("account_uid")
         salon_uid = self.kwargs.get("salon_uid")
 
         try:
-            salon = Salon.objects.get(uid=salon_uid, account=account)
-            return Service.objects.filter(account=account, salon=salon).order_by(
-                "created_at"
-            )
+            salon = Salon.objects.get(uid=salon_uid, account__uid=account_uid)
+            return Service.objects.filter(
+                account__uid=account_uid, salon=salon
+            ).order_by("created_at")
         except Salon.DoesNotExist:
             raise ValidationError("Salon not found.")
 
@@ -202,19 +202,18 @@ class AdminProductListView(ListAPIView):
         filters.SearchFilter,
         filters.OrderingFilter,
     ]
+    filterset_fields = ["category__name"]
     search_fields = ["name"]
     ordering_fields = ["created_at", "name"]
     ordering = ["-created_at"]
-    filterset_fields = ["category__name"]
 
     def get_queryset(self):
-        account = self.request.account
-
+        account_uid = self.kwargs.get("account_uid")
         salon_uid = self.kwargs.get("salon_uid")
 
         try:
-            salon = Salon.objects.get(uid=salon_uid, account=account)
-            return Product.objects.filter(account=account, salon=salon)
+            salon = Salon.objects.get(uid=salon_uid, account__uid=account_uid)
+            return Product.objects.filter(account__uid=account_uid, salon=salon)
         except Salon.DoesNotExist:
             raise ValidationError("Salon not found.")
 
@@ -227,19 +226,18 @@ class AdminEmployeeListView(ListAPIView):
         filters.SearchFilter,
         filters.OrderingFilter,
     ]
+    filterset_fields = ["designation__name"]
     search_fields = ["employee_id", "name"]
     ordering_fields = ["created_at", "name"]
     ordering = ["-created_at"]
-    filterset_fields = ["designation__name"]
 
     def get_queryset(self):
-        account = self.request.account
-
+        account_uid = self.kwargs.get("account_uid")
         salon_uid = self.kwargs.get("salon_uid")
 
         try:
-            salon = Salon.objects.get(uid=salon_uid, account=account)
-            return Employee.objects.filter(account=account, salon=salon)
+            salon = Salon.objects.get(uid=salon_uid, account__uid=account_uid)
+            return Employee.objects.filter(account__uid=account_uid, salon=salon)
         except Salon.DoesNotExist:
             raise ValidationError("Salon not found.")
 
@@ -252,6 +250,10 @@ class AdminBookingListView(ListAPIView):
         filters.SearchFilter,
         filters.OrderingFilter,
     ]
+    filterset_fields = {
+        "booking_date": ["gte", "lte"],
+        "status": ["exact"],
+    }
     search_fields = [
         "booking_id",
         "customer__first_name",
@@ -266,19 +268,14 @@ class AdminBookingListView(ListAPIView):
     ]
     ordering_fields = ["created_at", "booking_duration"]
     ordering = ["-created_at"]
-    filterset_fields = {
-        "booking_date": ["gte", "lte"],
-        "status": ["exact"],
-    }
 
     def get_queryset(self):
-        account = self.request.account
-
+        account_uid = self.kwargs.get("account_uid")
         salon_uid = self.kwargs.get("salon_uid")
 
         try:
-            salon = Salon.objects.get(uid=salon_uid, account=account)
-            return Booking.objects.filter(account=account, salon=salon)
+            salon = Salon.objects.get(uid=salon_uid, account__uid=account_uid)
+            return Booking.objects.filter(account__uid=account_uid, salon=salon)
         except Salon.DoesNotExist:
             raise ValidationError("Salon not found.")
 
@@ -297,9 +294,9 @@ class AdminAccountEnquiryListView(ListAPIView):
     ordering = ["-created_at"]
 
     def get_queryset(self):
-        account = self.request.account
+        account_uid = self.kwargs.get("account_uid")
 
-        return SupportTicket.objects.filter(account=account)
+        return SupportTicket.objects.filter(account__uid=account_uid)
 
 
 class AdminAccountEnquiryDetailView(RetrieveUpdateDestroyAPIView):
@@ -307,7 +304,12 @@ class AdminAccountEnquiryDetailView(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsManagementAdminOrStaff]
 
     def get_object(self):
-        account = self.request.account
+        account_uid = self.kwargs.get("account_uid")
         uid = self.kwargs.get("account_enquiry_uid")
 
-        return SupportTicket.objects.get(uid=uid, account=account)
+        return SupportTicket.objects.get(uid=uid, account__uid=account_uid)
+
+
+class AdminSubscriptionPlanListView(ListCreateAPIView):
+    serializer_class = AdminSubscriptionPlanSerializer
+    pass

@@ -305,3 +305,7 @@ class AdminAccountEnquirySerializer(serializers.ModelSerializer):
             "images",
             "created_at",
         ]
+
+
+class AdminSubscriptionPlanSerializer(serializers.ModelSerializer):
+    pass

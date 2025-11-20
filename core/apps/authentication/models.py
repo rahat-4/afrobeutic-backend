@@ -41,7 +41,7 @@ class User(AbstractBaseUser, PermissionsMixin, BaseModel):
     REQUIRED_FIELDS = []
 
     def __str__(self):
-        return f"UID: {self.uid} | Email: {self.email}"
+        return f"UID: {self.uid} | Email: {self.email}: is_admin={self.is_admin} is_staff={self.is_staff}"
 
     def get_full_name(self):
         return f"{self.first_name} {self.last_name}"
@@ -54,7 +54,7 @@ class Account(BaseModel):
     )
 
     def __str__(self):
-        return f"Account: {self.name} owned by {self.owner.email}"
+        return f"UID: {self.uid} account: {self.name} owned by {self.owner.email}"
 
 
 class AccountMembership(BaseModel):

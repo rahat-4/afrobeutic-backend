@@ -10,10 +10,7 @@ from apps.authentication.models import Account
 class CurrentAccountMiddleware(MiddlewareMixin):
     EXCLUDED_PATHS = [
         # Admin paths
-        re.compile(r"^/api/admin/managements/?$"),
-        re.compile(r"^/api/admin/users/?$"),
-        re.compile(r"^/api/admin/accounts/?$"),
-        re.compile(r"^/api/admin/register/?$"),
+        re.compile(r"^/api/admin/.*$"),
         # Public paths
         re.compile(r"^/admin/.*$"),
         re.compile(r"^/api/auth/register/?$"),
