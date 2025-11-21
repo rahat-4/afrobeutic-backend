@@ -3,7 +3,9 @@ from django.urls import path
 from ..views.admin import (
     AdminRegistrationView,
     AdminUserListView,
+    AdminUserDetailView,
     AdminAccountListView,
+    AdminAccountDetailView,
     AdminSalonListView,
     AdminSalonDetailView,
     AdminAccountEnquiryListView,
@@ -13,6 +15,7 @@ from ..views.admin import (
     AdminEmployeeListView,
     AdminBookingListView,
     AdminManagementListView,
+    AdminManagementDetailView,
     AdminSubscriptionPlanListView,
 )
 
@@ -62,11 +65,26 @@ urlpatterns = [
         AdminAccountEnquiryListView.as_view(),
         name="admin.account-enquiry-list",
     ),
+    path(
+        "/accounts/<uuid:account_uid>",
+        AdminAccountDetailView.as_view(),
+        name="admin.account-detail",
+    ),
     path("/accounts", AdminAccountListView.as_view(), name="admin.accounts"),
+    path(
+        "/users/<uuid:user_uid>",
+        AdminUserDetailView.as_view(),
+        name="admin.user-detail",
+    ),
     path("/users", AdminUserListView.as_view(), name="admin.users"),
+    path(
+        "/managements/<uuid:management_uid>",
+        AdminManagementDetailView.as_view(),
+        name="admin.management-detail",
+    ),
     path("/managements", AdminManagementListView.as_view(), name="admin.management"),
     path(
-        "/register",
+        "/managements-register",
         AdminRegistrationView.as_view(),
         name="auth.admin-register",
     ),

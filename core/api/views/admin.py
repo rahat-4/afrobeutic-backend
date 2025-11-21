@@ -12,6 +12,7 @@ from rest_framework.generics import (
     ListAPIView,
     ListCreateAPIView,
     RetrieveAPIView,
+    RetrieveDestroyAPIView,
     RetrieveUpdateDestroyAPIView,
 )
 
@@ -77,6 +78,27 @@ class AdminManagementListView(ListAPIView):
         return User.objects.filter(is_staff=True)
 
 
+class AdminManagementDetailView(RetrieveDestroyAPIView):
+    serializer_class = AdminManagementSerializer
+
+    def get_permissions(self):
+        if self.request.method == "DELETE":
+            self.permission_classes = [IsManagementAdmin]
+        else:
+            self.permission_classes = [IsManagementAdminOrStaff]
+
+        return super().get_permissions()
+
+    def get_object(self):
+        uid = self.kwargs.get("management_uid")
+
+        try:
+            user = User.objects.get(uid=uid, is_staff=True)
+            return user
+        except User.DoesNotExist:
+            raise ValidationError("Management user not found.")
+
+
 class AdminUserListView(ListAPIView):
     serializer_class = AdminUserSerializer
     permission_classes = [IsManagementAdminOrStaff]
@@ -113,6 +135,29 @@ class AdminUserListView(ListAPIView):
         )
 
 
+class AdminUserDetailView(RetrieveAPIView):
+    serializer_class = AdminUserSerializer
+    permission_classes = [IsManagementAdminOrStaff]
+
+    def get_object(self):
+        uid = self.kwargs.get("user_uid")
+
+        memberships_qs = AccountMembership.objects.select_related(
+            "account", "account__owner"
+        )
+
+        try:
+            user = (
+                User.objects.filter(uid=uid, is_staff=False)
+                .prefetch_related(Prefetch("memberships", queryset=memberships_qs))
+                .get()
+            )
+            return user
+
+        except User.DoesNotExist:
+            raise ValidationError("User not found.")
+
+
 class AdminAccountListView(ListAPIView):
     queryset = Account.objects.all()
     serializer_class = AdminAccountSerializer
@@ -125,6 +170,14 @@ class AdminAccountListView(ListAPIView):
     search_fields = ["name"]
     ordering_fields = ["created_at", "name"]
     ordering = ["-created_at"]
+
+
+class AdminAccountDetailView(RetrieveAPIView):
+    queryset = Account.objects.all()
+    serializer_class = AdminAccountSerializer
+    permission_classes = [IsManagementAdminOrStaff]
+    lookup_field = "uid"
+    lookup_url_kwarg = "account_uid"
 
 
 class AdminSalonListView(ListAPIView):

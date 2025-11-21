@@ -307,5 +307,5 @@ class AdminAccountEnquirySerializer(serializers.ModelSerializer):
         ]
 
 
-class AdminSubscriptionPlanSerializer(serializers.ModelSerializer):
+class AdminSubscriptionPlanSerializer(serializers.Serializer):
     pass

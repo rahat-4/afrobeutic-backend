@@ -108,3 +108,78 @@ class AccountInvitation(BaseModel):
 
     def __str__(self):
         return f"Invitation to {self.email} as {self.role} by {self.invited_by.email} | UID: {self.uid}"
+
+
+# from django.db import models
+# from django.utils import timezone
+# import uuid
+
+
+# # ---------------------------------------------------------
+# # BILLING PLAN
+# # ---------------------------------------------------------
+
+
+# class Plan(models.Model):
+#     code = models.CharField(max_length=50, unique=True)
+#     name = models.CharField(max_length=120)
+#     price_cents = models.PositiveIntegerField()
+#     features = models.JSONField()  # Stores all feature limits
+#     is_active = models.BooleanField(default=True)
+
+#     class Meta:
+#         db_table = "billing_plan"
+#         ordering = ["price_cents"]
+
+#     def __str__(self):
+#         return f"{self.name} ({self.code})"
+
+
+# # ---------------------------------------------------------
+# # ACCOUNT SUBSCRIPTION
+# # ---------------------------------------------------------
+
+
+# class Subscription(models.Model):
+
+#     STATUS_CHOICES = [
+#         ("trialing", "Trialing"),
+#         ("active", "Active"),
+#         ("past_due", "Past Due"),
+#         ("canceled", "Canceled"),
+#         ("paused", "Paused"),
+#     ]
+
+#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+#     # Assuming you have an Account model somewhere
+#     account = models.ForeignKey(
+#         "accounts.Account", on_delete=models.CASCADE, related_name="subscriptions"
+#     )
+
+#     plan = models.ForeignKey(
+#         Plan, on_delete=models.PROTECT, related_name="subscriptions"
+#     )
+
+#     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
+
+#     current_period_start = models.DateTimeField(default=timezone.now)
+#     current_period_end = models.DateTimeField()
+
+#     cancel_at_period_end = models.BooleanField(default=False)
+
+#     trial_ends_at = models.DateTimeField(null=True, blank=True)
+
+#     # Optional billing provider integration (Stripe, etc.)
+#     provider = models.CharField(max_length=20, blank=True, default="")
+#     provider_customer_id = models.CharField(max_length=80, blank=True, default="")
+#     provider_subscription_id = models.CharField(max_length=80, blank=True, default="")
+
+#     created_at = models.DateTimeField(auto_now_add=True)
+
+#     class Meta:
+#         db_table = "account_subscription"
+#         ordering = ["-created_at"]
+
+#     def __str__(self):
+#         return f"{self.account} - {self.plan.code} ({self.status})"

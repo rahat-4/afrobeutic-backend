@@ -15,6 +15,7 @@ class CurrentAccountMiddleware(MiddlewareMixin):
         re.compile(r"^/admin/.*$"),
         re.compile(r"^/api/auth/register/?$"),
         re.compile(r"^/api/auth/login/?$"),
+        re.compile(r"^/api/auth/logout/?$"),
         re.compile(r"^/api/auth/verify-email/.*$"),
         re.compile(r"^/api/auth/resend-verification-email/?$"),
         re.compile(r"^/api/auth/accept-invitation/[0-9a-fA-F-]+/?$"),
