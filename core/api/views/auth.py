@@ -261,3 +261,92 @@ class MeView(APIView):
         serializer.save()
 
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# # utils.py
+# def set_jwt_cookies(response, access, refresh):
+#     # ACCESS TOKEN COOKIE
+#     response.set_cookie(
+#         "access",
+#         access,
+#         httponly=True,      # JavaScript cannot read
+#         secure=True,        # HTTPS only
+#         samesite="None",    # required for cross-site cookies
+#         max_age=300,        # 5 minutes
+#     )
+
+#     # REFRESH TOKEN COOKIE
+#     response.set_cookie(
+#         "refresh",
+#         refresh,
+#         httponly=True,
+#         secure=True,
+#         samesite="None",
+#         max_age=7 * 24 * 3600,  # 7 days
+#     )
+
+#     return response
+
+
+# from rest_framework.response import Response
+# from rest_framework import status
+# from rest_framework.views import APIView
+# from rest_framework.permissions import IsAuthenticated
+# from rest_framework_simplejwt.tokens import RefreshToken
+# from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
+# from django.contrib.auth import authenticate
+# from .utils import set_jwt_cookies
+
+
+# # ----------------------------
+# # LOGIN
+# # ----------------------------
+# class LoginView(APIView):
+#     def post(self, request):
+#         username = request.data.get("username")
+#         password = request.data.get("password")
+
+#         user = authenticate(username=username, password=password)
+#         if not user:
+#             return Response({"detail": "Invalid credentials"}, status=400)
+
+#         refresh = RefreshToken.for_user(user)
+#         access = str(refresh.access_token)
+
+#         response = Response({"detail": "Logged in"}, status=200)
+#         return set_jwt_cookies(response, access, str(refresh))
+
+
+# # ----------------------------
+# # REFRESH TOKEN
+# # ----------------------------
+# class RefreshView(APIView):
+#     def post(self, request):
+#         refresh_token = request.COOKIES.get("refresh")
+
+#         if not refresh_token:
+#             return Response({"detail": "No refresh token"}, status=401)
+
+#         try:
+#             refresh = RefreshToken(refresh_token)
+#             access = refresh.access_token
+#         except TokenError:
+#             return Response({"detail": "Token expired or invalid"}, status=401)
+
+#         # ROTATE REFRESH TOKEN
+#         refresh.blacklist()
+#         new_refresh = RefreshToken.for_user(refresh.user)
+
+#         response = Response({"detail": "Token refreshed"}, status=200)
+#         return set_jwt_cookies(response, str(access), str(new_refresh))
+
+
+# # ----------------------------
+# # LOGOUT
+# # ----------------------------
+# class LogoutView(APIView):
+#     def post(self, request):
+#         response = Response({"detail": "Logged out"}, status=200)
+#         response.delete_cookie("access")
+#         response.delete_cookie("refresh")
+#         return response

@@ -256,7 +256,9 @@ class AdminBookingSerializer(serializers.ModelSerializer):
 
 
 class AdminManagementSerializer(serializers.ModelSerializer):
-    role = serializers.SerializerMethodField()
+    role = serializers.ChoiceField(
+        choices=["MANAGEMENT_ADMIN", "MANAGEMENT_STAFF"], write_only=True
+    )
 
     class Meta:
         model = User
@@ -270,12 +272,33 @@ class AdminManagementSerializer(serializers.ModelSerializer):
             "role",
             "last_login",
         ]
+        read_only_fields = ["uid", "email", "last_login"]
 
-    def get_role(self, obj):
+    def management_role(self, obj):
         if obj.is_admin and obj.is_staff:
             return "MANAGEMENT_ADMIN"
         else:
             return "MANAGEMENT_STAFF"
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation["role"] = self.management_role(instance)
+        return representation
+
+    def update(self, instance, validated_data):
+        with transaction.atomic():
+            role = validated_data.pop("role")
+            instance = super().update(instance, validated_data)
+
+            if role == "MANAGEMENT_ADMIN":
+                instance.is_admin = True
+                instance.is_staff = True
+            elif role == "MANAGEMENT_STAFF":
+                instance.is_staff = True
+                instance.is_admin = False
+            instance.save()
+
+            return instance
 
 
 class AdminAccountEnquirySerializer(serializers.ModelSerializer):

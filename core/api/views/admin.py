@@ -78,11 +78,11 @@ class AdminManagementListView(ListAPIView):
         return User.objects.filter(is_staff=True)
 
 
-class AdminManagementDetailView(RetrieveDestroyAPIView):
+class AdminManagementDetailView(RetrieveUpdateDestroyAPIView):
     serializer_class = AdminManagementSerializer
 
     def get_permissions(self):
-        if self.request.method == "DELETE":
+        if self.request.method in ["PUT", "PATCH", "DELETE"]:
             self.permission_classes = [IsManagementAdmin]
         else:
             self.permission_classes = [IsManagementAdminOrStaff]
