@@ -41,9 +41,16 @@ THIRD_PARTY_APPS = [
     "drf_spectacular",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
+    "simple_history",
 ]
 
-PROJECT_APPS = ["common", "apps.authentication", "apps.salon", "apps.support"]
+PROJECT_APPS = [
+    "common",
+    "apps.authentication",
+    "apps.salon",
+    "apps.support",
+    "apps.thirdparty",
+]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + PROJECT_APPS
 
@@ -57,6 +64,7 @@ MIDDLEWARE = [
     "common.middlewares.CurrentAccountMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # "simple_history.middleware.HistoricalRequestMiddleware",
 ]
 
 ROOT_URLCONF = "core.urls"
