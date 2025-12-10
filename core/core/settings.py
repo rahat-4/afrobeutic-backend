@@ -17,12 +17,14 @@ SECRET_KEY = "django-insecure-53g8hyl%j%(!nf2!g&=)s-7=&yi4%9#2$@865qq)n#0)mt$yiq
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    "181.215.69.66",
+    "194.164.93.88",
     "api.afrobeutic.com",
+    "client.afrobeutic.com",
     "localhost",
     "127.0.0.1",
     "afrobeutic.com",
 ]
+
 
 
 # Application definition
@@ -225,9 +227,13 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3001",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
-    "http://181.215.69.66:5000",
+    "http://194.164.93.88:5000",
+    "http://194.164.93.88:3000",
+    "http://194.164.93.88:8000",
     "https://afrobeutic.com",
     "https://www.afrobeutic.com",
+    "https://www.client.afrobeutic.com",
+    "https://client.afrobeutic.com"
 ]
 
 

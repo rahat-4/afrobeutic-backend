@@ -60,22 +60,22 @@ class VerifyEmailView(APIView):
         except (User.DoesNotExist, ValueError, TypeError, OverflowError):
             params = urlencode({"error": "invalid_link"})
             return HttpResponseRedirect(
-                f"https://www.afrobeutic.com/auth/signup/error?{params}"
+                f"https://client.afrobeutic.com/auth/signup/error?{params}"
             )
 
         if user.is_active:
             return HttpResponseRedirect(
-                "https://www.afrobeutic.com/auth/signup/already-verified"
+                "https://client.afrobeutic.com/auth/signup/already-verified"
             )
 
         if email_token_generator.check_token(user, token):
             user.is_active = True
             user.save()
-            return HttpResponseRedirect("https://www.afrobeutic.com/auth/login")
+            return HttpResponseRedirect("https://client.afrobeutic.com/auth/login")
         else:
             params = urlencode({"error": "expired_or_invalid"})
             return HttpResponseRedirect(
-                f"https://www.afrobeutic.com/auth/signup/error?{params}"
+                f"https://client.afrobeutic.com/auth/signup/error?{params}"
             )
 
 
@@ -129,13 +129,13 @@ class AcceptInvitationView(APIView):
         except AccountInvitation.DoesNotExist:
             params = urlencode({"error": "invalid_invitation"})
             return HttpResponseRedirect(
-                f"https://www.afrobeutic.com/auth/signup/error?{params}"
+                f"https://client.afrobeutic.com/auth/signup/error?{params}"
             )
 
         if invitation.is_expired():
             params = urlencode({"error": "expired_invitation"})
             return HttpResponseRedirect(
-                f"https://www.afrobeutic.com/auth/signup/error?{params}"
+                f"https://client.afrobeutic.com/auth/signup/error?{params}"
             )
 
         email = invitation.email.lower()
@@ -156,14 +156,14 @@ class AcceptInvitationView(APIView):
             invitation.save()
 
             # ✅ Redirect to login
-            return HttpResponseRedirect("https://www.afrobeutic.com/auth/login")
+            return HttpResponseRedirect("https://client.afrobeutic.com/auth/login")
         else:
             # 🚪 Redirect to register page with email + token
             params = urlencode(
                 {"email": email, "role": invitation.role, "token": invitation.uid}
             )
             return HttpResponseRedirect(
-                f"https://www.afrobeutic.com/auth/accept-invitation?{params}"
+                f"https://client.afrobeutic.com/auth/accept-invitation?{params}"
             )
 
     def post(self, request, token):
@@ -172,13 +172,13 @@ class AcceptInvitationView(APIView):
         except AccountInvitation.DoesNotExist:
             params = urlencode({"error": "invalid_invitation"})
             return HttpResponseRedirect(
-                f"https://www.afrobeutic.com/auth/signup/error?{params}"
+                f"https://client.afrobeutic.com/auth/signup/error?{params}"
             )
 
         if invitation.is_expired():
             params = urlencode({"error": "expired_invitation"})
             return HttpResponseRedirect(
-                f"https://www.afrobeutic.com/auth/signup/error?{params}"
+                f"https://client.afrobeutic.com/auth/signup/error?{params}"
             )
 
         email = invitation.email.lower()
@@ -186,7 +186,7 @@ class AcceptInvitationView(APIView):
 
         if existing_user:
             params = urlencode({"error": "already_exists"})
-            return HttpResponseRedirect(f"https://www.afrobeutic.com/login?{params}")
+            return HttpResponseRedirect(f"https://client.afrobeutic.com/login?{params}")
 
         # Validate new user data
         serializer = self.serializer_class(data=request.data)
@@ -197,7 +197,7 @@ class AcceptInvitationView(APIView):
             user.delete()
             params = urlencode({"error": "email_mismatch"})
             return HttpResponseRedirect(
-                f"https://www.afrobeutic.com/register-invite?{params}"
+                f"https://client.afrobeutic.com/register-invite?{params}"
             )
 
         # Complete invitation
@@ -215,7 +215,7 @@ class AcceptInvitationView(APIView):
 
         # ✅ Redirect to email verification info page
         return HttpResponseRedirect(
-            f"https://www.afrobeutic.com/verify-email?email={email}"
+            f"https://client.afrobeutic.com/verify-email?email={email}"
         )
 
 

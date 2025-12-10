@@ -1,14 +1,15 @@
 from django.urls import path
 
 from ..views.salons import (
-    SalonEmployeeDetailView,
     SalonListView,
     SalonDetailView,
+    SalonDashboardApiView,
     SalonServiceListView,
     SalonServiceDetailView,
     SalonProductListView,
     SalonProductDetailView,
     SalonEmployeeListView,
+    SalonEmployeeDetailView,
     SalonChairListView,
     SalonChairDetailView,
     SalonChairBookingListView,
@@ -17,23 +18,23 @@ from ..views.salons import (
     SalonBookingCalendarDetailView,
     SalonLookBookListView,
     SalonLookBookDetailView,
-    SalonLeadListView,
-    SalonLeadDetailView,
+    # SalonLeadListView,
+    # SalonLeadDetailView,
 )
 
 urlpatterns = [
-    # TODO: Remove it later
-    path(
-        "/<uuid:salon_uid>/leads/<uuid:lead_uid>",
-        SalonLeadDetailView.as_view(),
-        name="salon-lead-detail",
-    ),
-    # TODO: Remove it later
-    path(
-        "/<uuid:salon_uid>/leads",
-        SalonLeadListView.as_view(),
-        name="salon-lead-list",
-    ),
+    # # TODO: Remove it later
+    # path(
+    #     "/<uuid:salon_uid>/leads/<uuid:lead_uid>",
+    #     SalonLeadDetailView.as_view(),
+    #     name="salon-lead-detail",
+    # ),
+    # # TODO: Remove it later
+    # path(
+    #     "/<uuid:salon_uid>/leads",
+    #     SalonLeadListView.as_view(),
+    #     name="salon-lead-list",
+    # ),
     path(
         "/<uuid:salon_uid>/lookbook/<uuid:lookbook_uid>",
         SalonLookBookDetailView.as_view(),
@@ -103,6 +104,11 @@ urlpatterns = [
         "/<uuid:salon_uid>/services",
         SalonServiceListView.as_view(),
         name="salon.service-list",
+    ),
+    path(
+        "/<uuid:salon_uid>/dashboard",
+        SalonDashboardApiView.as_view(),
+        name="salon.dashboard",
     ),
     path(
         "/<uuid:salon_uid>",
