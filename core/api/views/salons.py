@@ -419,7 +419,7 @@ class SalonChairBookingListView(ListCreateAPIView):
         serializer.save(salon=salon, chair=chair, account=account)
 
 
-class SalonChairBookingDetailView(RetrieveAPIView):
+class SalonChairBookingDetailView(RetrieveUpdateAPIView):
     serializer_class = SalonChairBookingSerializer
     permission_classes = [IsOwnerOrAdminOrStaff]
     lookup_field = "uid"
@@ -440,6 +440,14 @@ class SalonChairBookingDetailView(RetrieveAPIView):
             account=account,
             account__members__user=user,
         )
+
+    def perform_update(self, serializer):
+        account = self.request.account
+        salon_uid = self.kwargs.get("salon_uid")
+        chair_uid = self.kwargs.get("chair_uid")
+        salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+        chair = get_object_or_404(Chair, uid=chair_uid, salon=salon, account=account)
+        serializer.save(salon=salon, chair=chair, account=account)
 
 
 class SalonBookingCalendarListView(ListAPIView):
