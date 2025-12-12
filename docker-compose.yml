@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./core:/app
+      - ./staticfiles:/app/staticfiles
     depends_on:
       - db
       - redis

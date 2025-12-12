@@ -5,6 +5,7 @@ from django.utils.http import urlsafe_base64_decode
 from django.http import HttpResponseRedirect
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.conf import settings
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -60,22 +61,22 @@ class VerifyEmailView(APIView):
         except (User.DoesNotExist, ValueError, TypeError, OverflowError):
             params = urlencode({"error": "invalid_link"})
             return HttpResponseRedirect(
-                f"https://client.afrobeutic.com/auth/signup/error?{params}"
+                f"{settings.FRONTEND_URL}/auth/signup/error?{params}"
             )
 
         if user.is_active:
             return HttpResponseRedirect(
-                "https://client.afrobeutic.com/auth/signup/already-verified"
+                f"{settings.FRONTEND_URL}/auth/signup/already-verified"
             )
 
         if email_token_generator.check_token(user, token):
             user.is_active = True
             user.save()
-            return HttpResponseRedirect("https://client.afrobeutic.com/auth/login")
+            return HttpResponseRedirect(f"{settings.FRONTEND_URL}/auth/login")
         else:
             params = urlencode({"error": "expired_or_invalid"})
             return HttpResponseRedirect(
-                f"https://client.afrobeutic.com/auth/signup/error?{params}"
+                f"{settings.FRONTEND_URL}/auth/signup/error?{params}"
             )
 
 
@@ -129,13 +130,13 @@ class AcceptInvitationView(APIView):
         except AccountInvitation.DoesNotExist:
             params = urlencode({"error": "invalid_invitation"})
             return HttpResponseRedirect(
-                f"https://client.afrobeutic.com/auth/signup/error?{params}"
+                f"{settings.FRONTEND_URL}/auth/signup/error?{params}"
             )
 
         if invitation.is_expired():
             params = urlencode({"error": "expired_invitation"})
             return HttpResponseRedirect(
-                f"https://client.afrobeutic.com/auth/signup/error?{params}"
+                f"{settings.FRONTEND_URL}/auth/signup/error?{params}"
             )
 
         email = invitation.email.lower()
@@ -156,14 +157,14 @@ class AcceptInvitationView(APIView):
             invitation.save()
 
             # ✅ Redirect to login
-            return HttpResponseRedirect("https://client.afrobeutic.com/auth/login")
+            return HttpResponseRedirect(f"{settings.FRONTEND_URL}/auth/login")
         else:
             # 🚪 Redirect to register page with email + token
             params = urlencode(
                 {"email": email, "role": invitation.role, "token": invitation.uid}
             )
             return HttpResponseRedirect(
-                f"https://client.afrobeutic.com/auth/accept-invitation?{params}"
+                f"{settings.FRONTEND_URL}/auth/accept-invitation?{params}"
             )
 
     def post(self, request, token):
@@ -172,13 +173,13 @@ class AcceptInvitationView(APIView):
         except AccountInvitation.DoesNotExist:
             params = urlencode({"error": "invalid_invitation"})
             return HttpResponseRedirect(
-                f"https://client.afrobeutic.com/auth/signup/error?{params}"
+                f"{settings.FRONTEND_URL}/auth/signup/error?{params}"
             )
 
         if invitation.is_expired():
             params = urlencode({"error": "expired_invitation"})
             return HttpResponseRedirect(
-                f"https://client.afrobeutic.com/auth/signup/error?{params}"
+                f"{settings.FRONTEND_URL}/auth/signup/error?{params}"
             )
 
         email = invitation.email.lower()
@@ -186,7 +187,7 @@ class AcceptInvitationView(APIView):
 
         if existing_user:
             params = urlencode({"error": "already_exists"})
-            return HttpResponseRedirect(f"https://client.afrobeutic.com/login?{params}")
+            return HttpResponseRedirect(f"{settings.FRONTEND_URL}/login?{params}")
 
         # Validate new user data
         serializer = self.serializer_class(data=request.data)
@@ -197,7 +198,7 @@ class AcceptInvitationView(APIView):
             user.delete()
             params = urlencode({"error": "email_mismatch"})
             return HttpResponseRedirect(
-                f"https://client.afrobeutic.com/register-invite?{params}"
+                f"{settings.FRONTEND_URL}/register-invite?{params}"
             )
 
         # Complete invitation
@@ -215,7 +216,7 @@ class AcceptInvitationView(APIView):
 
         # ✅ Redirect to email verification info page
         return HttpResponseRedirect(
-            f"https://client.afrobeutic.com/verify-email?email={email}"
+            f"{settings.FRONTEND_URL}/verify-email?email={email}"
         )
 
 

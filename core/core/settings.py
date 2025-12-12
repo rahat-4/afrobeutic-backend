@@ -23,6 +23,7 @@ ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     "afrobeutic.com",
+    "afrobeutic-frontend.vercel.app"
 ]
 
 
@@ -145,6 +146,8 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -205,7 +208,8 @@ SPECTACULAR_SETTINGS = {
 # Email Configuration
 SENDGRID_API_KEY = config("SENDGRID_API_KEY")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
-
+FRONTEND_URL = config("FRONTEND_URL")
+BACKEND_URL = config("BACKEND_URL")
 
 CACHES = {
     "default": {
@@ -218,9 +222,9 @@ CACHES = {
 # CORS Configuration
 CORS_ALLOW_CREDENTIALS = True
 
-# CSRF_TRUSTED_ORIGINS = [
-#     "https://your-nextjs-domain.com",
-# ]
+CSRF_TRUSTED_ORIGINS = [
+    "https://api.afrobeutic.com",
+]
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
@@ -230,10 +234,12 @@ CORS_ALLOWED_ORIGINS = [
     "http://194.164.93.88:5000",
     "http://194.164.93.88:3000",
     "http://194.164.93.88:8000",
+    "https://api.afrobeutic.com",
     "https://afrobeutic.com",
     "https://www.afrobeutic.com",
     "https://www.client.afrobeutic.com",
-    "https://client.afrobeutic.com"
+    "https://client.afrobeutic.com",
+    "https://afrobeutic-frontend.vercel.app"
 ]
 
 
