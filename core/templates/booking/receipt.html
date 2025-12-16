@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Receipt - {{ booking.booking_id }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .header { font-size: 24px; margin-bottom: 10px; }
+        .item { margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="header">Booking Receipt</div>
+
+<p><strong>Booking ID:</strong> {{ booking.booking_id }}</p>
+<p><strong>Date:</strong> {{ booking.booking_date }}</p>
+<p><strong>Time:</strong> {{ booking.booking_time }}</p>
+<p><strong>Customer:</strong> {{ booking.customer.first_name }} {{ booking.customer.last_name }}</p>
+
+<hr>
+
+<h3>Services</h3>
+<ul>
+    {% for service in booking.services.all %}
+        <li>{{ service.name }} — ${{ service.final_price }}</li>
+    {% endfor %}
+</ul>
+
+<h3>Products</h3>
+<ul>
+    {% for product in booking.products.all %}
+        <li>{{ product.name }} — ${{ product.price }}</li>
+    {% empty %}
+        <li>No products used</li>
+    {% endfor %}
+</ul>
+
+<hr>
+
+<p><strong>Total Amount:</strong>  
+    ${{ total_amount }}
+</p>
+
+<p>Thank you for choosing our salon!</p>
+
+</body>
+</html>

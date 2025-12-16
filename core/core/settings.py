@@ -23,9 +23,8 @@ ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     "afrobeutic.com",
-    "afrobeutic-frontend.vercel.app"
+    "afrobeutic-frontend.vercel.app",
 ]
-
 
 
 # Application definition
@@ -77,7 +76,7 @@ APPEND_SLASH = False
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -239,7 +238,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://www.afrobeutic.com",
     "https://www.client.afrobeutic.com",
     "https://client.afrobeutic.com",
-    "https://afrobeutic-frontend.vercel.app"
+    "https://afrobeutic-frontend.vercel.app",
 ]
 
 

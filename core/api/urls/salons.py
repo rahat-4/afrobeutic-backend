@@ -18,6 +18,7 @@ from ..views.salons import (
     SalonBookingCalendarDetailView,
     SalonLookBookListView,
     SalonLookBookDetailView,
+    BookingReceiptDownloadAPIView
     # SalonLeadListView,
     # SalonLeadDetailView,
 )
@@ -35,6 +36,11 @@ urlpatterns = [
     #     SalonLeadListView.as_view(),
     #     name="salon-lead-list",
     # ),
+    path(
+        "/<uuid:salon_uid>/bookings/<uuid:booking_uid>/receipt",
+        BookingReceiptDownloadAPIView.as_view(),
+        name="salon.booking-receipt-download",
+    ),
     path(
         "/<uuid:salon_uid>/lookbook/<uuid:lookbook_uid>",
         SalonLookBookDetailView.as_view(),

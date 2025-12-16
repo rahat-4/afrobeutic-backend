@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from django.db.models import Prefetch, Count, Q
+from django.http import FileResponse
 
 from rest_framework.generics import (
     ListAPIView,
@@ -11,9 +12,10 @@ from rest_framework.generics import (
     get_object_or_404,
 )
 from rest_framework.response import Response
-from rest_framework import filters
+from rest_framework import filters, status
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
+
 
 from apps.authentication.models import AccountMembership
 from apps.salon.choices import BookingStatus, CustomerType
@@ -33,6 +35,7 @@ from common.permissions import (
     IsOwnerOrAdmin,
     IsOwnerOrAdminOrStaff,
 )
+from common.utils import generate_receipt_pdf
 
 from ..serializers.salons import (
     SalonSerializer,
@@ -97,6 +100,7 @@ class SalonDetailView(RetrieveUpdateDestroyAPIView):
             Salon, uid=uid, account=account, account__members__user=user
         )
 
+
 class SalonDashboardApiView(APIView):
     def get(self, request, salon_uid):
         user = request.user
@@ -105,13 +109,14 @@ class SalonDashboardApiView(APIView):
         counts = Salon.objects.filter(
             uid=salon_uid, account=account, account__members__user=user
         ).aggregate(
-            total_chairs=Count('salon_chairs', distinct=True),
-            total_employees=Count('salon_employees', distinct=True),
-            total_services=Count('salon_services', distinct=True),
-            total_products=Count('salon_products', distinct=True),
+            total_chairs=Count("salon_chairs", distinct=True),
+            total_employees=Count("salon_employees", distinct=True),
+            total_services=Count("salon_services", distinct=True),
+            total_products=Count("salon_products", distinct=True),
         )
 
         return Response(counts)
+
 
 class SalonServiceListView(ListCreateAPIView):
     serializer_class = SalonServiceSerializer
@@ -588,6 +593,41 @@ class SalonLookBookDetailView(RetrieveUpdateAPIView):
             account=account,
             account__members__user=user,
             status=BookingStatus.COMPLETED,
+        )
+
+
+class BookingReceiptDownloadAPIView(APIView):
+    permission_classes = [IsOwnerOrAdminOrStaff]
+
+    def get(self, request, salon_uid, booking_uid, *args, **kwargs):
+        try:
+            account = request.account
+            booking = Booking.objects.get(
+                uid=booking_uid, account=account, salon__uid=salon_uid
+            )
+        except Booking.DoesNotExist:
+            return Response({"detail": "Booking not found"}, status=404)
+
+        if booking.status != BookingStatus.COMPLETED:
+            return Response(
+                {"detail": "Receipt is only available for completed bookings."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            pdf_file = generate_receipt_pdf(booking)
+        except Exception as e:
+            return Response(
+                {"detail": f"Error generating receipt: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        filename = f"receipt_{booking.booking_id}.pdf"
+
+        return FileResponse(
+            pdf_file,
+            as_attachment=True,
+            filename=filename,
+            content_type="application/pdf",
         )
 
 
