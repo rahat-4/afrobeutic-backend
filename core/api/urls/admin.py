@@ -8,8 +8,10 @@ from ..views.admin import (
     AdminAccountDetailView,
     AdminSalonListView,
     AdminSalonDetailView,
+    AdminSalonDashboardApiView,
     AdminAccountEnquiryListView,
     AdminAccountEnquiryDetailView,
+    AdminCustomerListView,
     AdminServiceListView,
     AdminProductListView,
     AdminEmployeeListView,
@@ -44,6 +46,16 @@ urlpatterns = [
         "/accounts/<uuid:account_uid>/salons/<uuid:salon_uid>/services",
         AdminServiceListView.as_view(),
         name="admin.account-salon-services",
+    ),
+    path(
+        "/accounts/<uuid:account_uid>/salons/<uuid:salon_uid>/customers",
+        AdminCustomerListView.as_view(),
+        name="admin.account-salon-customers",
+    ),
+    path(
+        "/accounts/<uuid:account_uid>/salons/<uuid:salon_uid>/dashboard",
+        AdminSalonDashboardApiView.as_view(),
+        name="admin.account-salon-dashboard",
     ),
     path(
         "/accounts/<uuid:account_uid>/salons/<uuid:salon_uid>",

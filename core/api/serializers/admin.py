@@ -16,7 +16,7 @@ from common.serializers import (
 )
 
 from apps.authentication.models import Account, AccountMembership
-from apps.salon.models import Salon, Service, Product, Employee, Booking
+from apps.salon.models import Salon, Service, Product, Employee, Booking, Customer
 from apps.support.models import SupportTicket
 
 User = get_user_model()
@@ -164,6 +164,20 @@ class AdminSalonSerializer(serializers.ModelSerializer):
         ]
 
 
+class AdminCustomerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = [
+            "uid",
+            "first_name",
+            "last_name",
+            "email",
+            "phone",
+            "source",
+            "created_at",
+        ]
+
+
 class AdminServiceSerializer(serializers.ModelSerializer):
     category = serializers.CharField(source="category.name", read_only=True)
     assign_employees = serializers.SerializerMethodField()
@@ -227,6 +241,9 @@ class AdminBookingSerializer(serializers.ModelSerializer):
     services = ServiceSlimSerializer(many=True)
     products = ProductSlimSerializer(many=True)
     images = serializers.SerializerMethodField()
+    booking_revenue = serializers.DecimalField(
+        max_digits=10, decimal_places=2, read_only=True
+    )
 
     class Meta:
         model = Booking
@@ -247,6 +264,7 @@ class AdminBookingSerializer(serializers.ModelSerializer):
             "services",
             "products",
             "images",
+            "booking_revenue",
             "created_at",
         ]
 

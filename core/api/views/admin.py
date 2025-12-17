@@ -1,7 +1,10 @@
+from decimal import Decimal
+
 from django_filters.rest_framework import DjangoFilterBackend
 
 from django.contrib.auth import get_user_model
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Sum, F, DecimalField, ExpressionWrapper, Value
+from django.db.models.functions import Coalesce
 
 from rest_framework import filters
 from rest_framework import status
@@ -22,7 +25,16 @@ from common.permissions import IsManagementAdmin, IsManagementAdminOrStaff
 from apps.authentication.choices import AccountMembershipRole
 from apps.authentication.emails import send_verification_email
 from apps.authentication.models import Account, AccountMembership
-from apps.salon.models import Salon, Service, Product, Employee, Booking
+from apps.salon.models import (
+    Salon,
+    Service,
+    Product,
+    Employee,
+    Booking,
+    Customer,
+    Chair,
+)
+from apps.salon.choices import CustomerType, ChairStatus
 from apps.support.models import SupportTicket
 
 from ..serializers.admin import (
@@ -30,6 +42,7 @@ from ..serializers.admin import (
     AdminUserSerializer,
     AdminAccountSerializer,
     AdminSalonSerializer,
+    AdminCustomerSerializer,
     AdminServiceSerializer,
     AdminEmployeeSerializer,
     AdminProductSerializer,
@@ -215,6 +228,125 @@ class AdminSalonDetailView(RetrieveAPIView):
             raise ValidationError("Salon not found.")
 
 
+class AdminSalonDashboardApiView(APIView):
+    permission_classes = [IsManagementAdminOrStaff]
+
+    def get(self, request, account_uid, salon_uid):
+        try:
+            # Verify salon exists
+            salon = (
+                Salon.objects.filter(uid=salon_uid, account__uid=account_uid)
+                .only("uid")
+                .first()
+            )
+
+            if not salon:
+                return Response(
+                    {"error": "Salon not found."}, status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Get total bookings
+            total_bookings = Booking.objects.filter(
+                account__uid=account_uid, salon=salon
+            ).count()
+
+            total_booking_revenue = Booking.objects.filter(
+                account__uid=account_uid, salon=salon
+            ).aggregate(
+                # Calculate total service income with discount
+                services_total=Coalesce(
+                    Sum(
+                        ExpressionWrapper(
+                            F("services__price")
+                            * (1 - F("services__discount_percentage") / 100),
+                            output_field=DecimalField(max_digits=10, decimal_places=2),
+                        ),
+                        distinct=True,
+                    ),
+                    Value(Decimal("0.00")),
+                    output_field=DecimalField(max_digits=10, decimal_places=2),
+                ),
+                # Calculate total product income
+                products_total=Coalesce(
+                    Sum("products__price", distinct=True),
+                    Value(Decimal("0.00")),
+                    output_field=DecimalField(max_digits=10, decimal_places=2),
+                ),
+                # Calculate booking revenue
+                total_revenue=ExpressionWrapper(
+                    F("services_total") + F("products_total"),
+                    output_field=DecimalField(max_digits=10, decimal_places=2),
+                ),
+            )[
+                "total_revenue"
+            ]
+
+            # Get all other counts
+            total_services = Service.objects.filter(
+                account__uid=account_uid, salon=salon
+            ).count()
+
+            total_products = Product.objects.filter(
+                account__uid=account_uid, salon=salon
+            ).count()
+
+            total_employees = Employee.objects.filter(
+                account__uid=account_uid, salon=salon
+            ).count()
+
+            total_customers = Customer.objects.filter(
+                account__uid=account_uid, salon=salon, type=CustomerType.CUSTOMER
+            ).count()
+
+            total_chairs = Chair.objects.filter(
+                account__uid=account_uid, salon=salon, status=ChairStatus.AVAILABLE
+            ).count()
+
+            dashboard_data = {
+                "total_bookings": total_bookings,
+                "total_booking_revenue": total_booking_revenue,
+                "total_employees": total_employees,
+                "total_products": total_products,
+                "total_services": total_services,
+                "total_customers": total_customers,
+                "total_chairs": total_chairs,
+            }
+
+            return Response(dashboard_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class AdminCustomerListView(ListAPIView):
+    serializer_class = AdminCustomerSerializer
+    permission_classes = [IsManagementAdminOrStaff]
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_fields = ["source"]
+    search_fields = ["first_name", "last_name", "email", "phone"]
+    ordering_fields = ["created_at"]
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        account_uid = self.kwargs.get("account_uid")
+        salon_uid = self.kwargs.get("salon_uid")
+
+        try:
+            salon = Salon.objects.get(uid=salon_uid, account__uid=account_uid)
+        except Salon.DoesNotExist:
+            raise ValidationError("Salon not found.")
+
+        return Customer.objects.filter(
+            account__uid=account_uid, salon=salon, type=CustomerType.CUSTOMER
+        ).order_by("created_at")
+
+
 class AdminServiceListView(ListAPIView):
     serializer_class = AdminServiceSerializer
     permission_classes = [IsManagementAdminOrStaff]
@@ -240,11 +372,12 @@ class AdminServiceListView(ListAPIView):
 
         try:
             salon = Salon.objects.get(uid=salon_uid, account__uid=account_uid)
-            return Service.objects.filter(
-                account__uid=account_uid, salon=salon
-            ).order_by("created_at")
         except Salon.DoesNotExist:
             raise ValidationError("Salon not found.")
+
+        return Service.objects.filter(account__uid=account_uid, salon=salon).order_by(
+            "created_at"
+        )
 
 
 class AdminProductListView(ListAPIView):
@@ -266,9 +399,10 @@ class AdminProductListView(ListAPIView):
 
         try:
             salon = Salon.objects.get(uid=salon_uid, account__uid=account_uid)
-            return Product.objects.filter(account__uid=account_uid, salon=salon)
         except Salon.DoesNotExist:
             raise ValidationError("Salon not found.")
+
+        return Product.objects.filter(account__uid=account_uid, salon=salon)
 
 
 class AdminEmployeeListView(ListAPIView):
@@ -328,7 +462,34 @@ class AdminBookingListView(ListAPIView):
 
         try:
             salon = Salon.objects.get(uid=salon_uid, account__uid=account_uid)
-            return Booking.objects.filter(account__uid=account_uid, salon=salon)
+            return Booking.objects.filter(
+                account__uid=account_uid, salon=salon
+            ).annotate(
+                # Calculate total service income with discount
+                services_total=Coalesce(
+                    Sum(
+                        ExpressionWrapper(
+                            F("services__price")
+                            * (1 - F("services__discount_percentage") / 100),
+                            output_field=DecimalField(max_digits=10, decimal_places=2),
+                        ),
+                        distinct=True,
+                    ),
+                    Value(Decimal("0.00")),
+                    output_field=DecimalField(max_digits=10, decimal_places=2),
+                ),
+                # Calculate total product income
+                products_total=Coalesce(
+                    Sum("products__price", distinct=True),
+                    Value(Decimal("0.00")),
+                    output_field=DecimalField(max_digits=10, decimal_places=2),
+                ),
+                # Calculate booking revenue
+                booking_revenue=ExpressionWrapper(
+                    F("services_total") + F("products_total"),
+                    output_field=DecimalField(max_digits=10, decimal_places=2),
+                ),
+            )
         except Salon.DoesNotExist:
             raise ValidationError("Salon not found.")
 
