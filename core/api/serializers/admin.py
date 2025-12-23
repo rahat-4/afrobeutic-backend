@@ -165,6 +165,8 @@ class AdminSalonSerializer(serializers.ModelSerializer):
 
 
 class AdminCustomerSerializer(serializers.ModelSerializer):
+    source = serializers.CharField(source="source.name", read_only=True)
+
     class Meta:
         model = Customer
         fields = [

@@ -549,7 +549,11 @@ class BookingProductsSlimSerializer(serializers.ModelSerializer):
 class SalonChairBookingSerializer(serializers.ModelSerializer):
     customer = SalonCustomerSlimSerializer()
     services = serializers.SlugRelatedField(
-        queryset=Service.objects.all(), many=True, slug_field="uid", required=False, allow_null=True
+        queryset=Service.objects.all(),
+        many=True,
+        slug_field="uid",
+        required=False,
+        allow_null=True,
     )
     products = serializers.SlugRelatedField(
         queryset=Product.objects.all(),
@@ -776,6 +780,8 @@ class SalonBookingCalendarDetailSerializer(serializers.ModelSerializer):
             "employee",
             "created_at",
             "images",
+            "tips_amount",
+            "payment_type",
             "total_price",
             "final_price",
         ]
@@ -803,7 +809,7 @@ class SalonBookingCalendarDetailSerializer(serializers.ModelSerializer):
     def get_final_price(self, obj):
         final_services_price = sum(s.final_price() for s in obj.services.all())
         total_products_price = sum(p.price for p in obj.products.all())
-        return final_services_price + total_products_price
+        return final_services_price + total_products_price + obj.tips_amount
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)

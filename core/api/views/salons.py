@@ -596,7 +596,7 @@ class SalonLookBookDetailView(RetrieveUpdateAPIView):
         )
 
 
-class BookingReceiptDownloadAPIView(APIView):
+class SalonBookingReceiptDownloadAPIView(APIView):
     permission_classes = [IsOwnerOrAdminOrStaff]
 
     def get(self, request, salon_uid, booking_uid, *args, **kwargs):

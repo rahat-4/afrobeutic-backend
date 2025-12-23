@@ -19,6 +19,7 @@ from .choices import (
     BookingStatus,
     ChairStatus,
     CustomerType,
+    BookingPaymentType
 )
 from .utils import (
     get_salon_media_path,
@@ -276,6 +277,12 @@ class Booking(BaseModel):
     booking_duration = models.DurationField(default=timedelta(minutes=30))
     cancellation_reason = models.TextField(blank=True, null=True)
     completed_at = models.DateTimeField(blank=True, null=True)
+    tips_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    payment_type = models.CharField(
+        max_length=20,
+        choices=BookingPaymentType.choices,
+        default=BookingPaymentType.CASH,
+    )
 
     # Fk
     cancelled_by = models.ForeignKey(

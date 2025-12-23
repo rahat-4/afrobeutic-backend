@@ -52,3 +52,14 @@ class ChairStatus(models.TextChoices):
 class CustomerType(models.TextChoices):
     LEAD = "LEAD", _("Lead")
     CUSTOMER = "CUSTOMER", _("Customer")
+
+
+class BookingPaymentType(models.TextChoices):
+    FRONT_DESK = "FRONT_DESK", _("Front Desk")
+    SELF_CHECKOUT = "SELF_CHECKOUT", _("Self Checkout")
+    CREDIT_CARD = "CREDIT_CARD", _("Credit Card")
+    CASH = "CASH", _("Cash")
+    CHECK = "CHECK", _("Check")
+    GIFT_CARD = "GIFT_CARD", _("Gift Card")
+    VENMO = "VENMO", _("Venmo")
+    OTHER = "OTHER", _("Other")
