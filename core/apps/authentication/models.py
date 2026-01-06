@@ -6,7 +6,13 @@ from django.utils import timezone
 
 from common.models import BaseModel
 
-from .choices import AccountMembershipRole, UserGender, AccountMembershipStatus
+from .choices import (
+    AccountMembershipRole,
+    UserGender,
+    AccountMembershipStatus,
+    AccountType,
+    AccountTimezone,
+)
 from .managers import UserManager, AccountMembershipQuerySet
 from .utils import get_user_media_path_prefix
 
@@ -49,6 +55,16 @@ class User(AbstractBaseUser, PermissionsMixin, BaseModel):
 
 class Account(BaseModel):
     name = models.CharField(max_length=255)
+    account_type = models.CharField(
+        max_length=30,
+        choices=AccountType.choices,
+        default=AccountType.SALON_SHOP,
+    )
+    account_timezone = models.CharField(
+        max_length=30,
+        choices=AccountTimezone.choices,
+        default=AccountTimezone.UTC,
+    )
     owner = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="created_accounts"
     )

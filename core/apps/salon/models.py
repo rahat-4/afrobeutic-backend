@@ -13,13 +13,14 @@ from apps.authentication.models import Account
 from decimal import Decimal, ROUND_HALF_UP
 
 from .choices import (
+    SalonCategory,
     SalonType,
     SalonStatus,
     DaysOfWeek,
     BookingStatus,
     ChairStatus,
     CustomerType,
-    BookingPaymentType
+    BookingPaymentType,
 )
 from .utils import (
     get_salon_media_path,
@@ -35,17 +36,36 @@ User = get_user_model()
 class Salon(BaseModel):
     logo = models.ImageField(upload_to=get_salon_logo_path, blank=True, null=True)
     name = models.CharField(max_length=255)
-    salon_type = models.CharField(
-        max_length=10, choices=SalonType.choices, default=SalonType.MALE
+    salon_category = models.CharField(
+        max_length=50,
+        choices=SalonCategory.choices,
+        default=SalonCategory.GENERAL_SALON,
     )
-    email = models.EmailField()
-    phone = PhoneNumberField()
-    website = models.URLField(blank=True, null=True)
-    street = models.CharField(max_length=255)
+    salon_type = models.CharField(
+        max_length=30, choices=SalonType.choices, default=SalonType.UNISEX_SALON
+    )
+    salon_service_types = models.JSONField(default=list, blank=True)
+
+    # address
+    address_one = models.CharField(max_length=255)
+    address_two = models.CharField(max_length=255, blank=True, null=True)
     city = models.CharField(max_length=100)
     postal_code = models.CharField(max_length=20)
     country = CountryField()
-    address = models.URLField(blank=True, null=True)
+
+    # contacts
+    phone_number_one = PhoneNumberField()
+    phone_number_two = PhoneNumberField(blank=True, null=True)
+    email = models.EmailField()
+
+    # social links
+    facebook = models.URLField(blank=True, null=True)
+    instagram = models.URLField(blank=True, null=True)
+    youtube = models.URLField(blank=True, null=True)
+
+    is_provide_hair_styles = models.BooleanField(default=False)
+    is_provide_bridal_makeup_services = models.BooleanField(default=False)
+
     status = models.CharField(
         max_length=10, choices=SalonStatus.choices, default=SalonStatus.ACTIVE
     )
@@ -61,10 +81,8 @@ class Salon(BaseModel):
 
 class OpeningHours(BaseModel):
     day = models.CharField(max_length=20, choices=DaysOfWeek.choices)
-    opening_start_time = models.TimeField(blank=True, null=True)
-    opening_end_time = models.TimeField(blank=True, null=True)
-    break_start_time = models.TimeField(blank=True, null=True)
-    break_end_time = models.TimeField(blank=True, null=True)
+    opening_time = models.TimeField(blank=True, null=True)
+    closing_time = models.TimeField(blank=True, null=True)
     is_closed = models.BooleanField(default=False)
 
     # Fk
@@ -124,7 +142,7 @@ class Service(BaseModel):
         help_text="List of available time slots. Example: ['MORNING', 'AFTERNOON']",
     )
     gender_specific = models.CharField(
-        max_length=10, choices=SalonType.choices, default=SalonType.UNISEX
+        max_length=30, choices=SalonType.choices, default=SalonType.UNISEX_SALON
     )
     discount_percentage = models.DecimalField(
         max_digits=5, decimal_places=2, default=0.00

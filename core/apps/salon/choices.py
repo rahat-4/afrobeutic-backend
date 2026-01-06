@@ -1,12 +1,15 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+class SalonCategory(models.TextChoices):
+    GENERAL_SALON = "GENERAL_SALON", _("General Salon")
+    MOBILE_OR_HOME_SERVICE_SALON = "MOBILE_OR_HOME_SERVICE_SALON", _("Mobile or Home Service Salon")
+    OCCASIONALLY_BOTH = "OCCASIONALLY_BOTH", _("Occasionally Both")
 
 class SalonType(models.TextChoices):
-    UNISEX = "UNISEX", _("Unisex")
-    MALE = "MALE", _("Male")
-    FEMALE = "FEMALE", _("Female")
-
+    BARBERSHOP = "BARBERSHOP", _("Barbershop / Men’s Salon")
+    UNISEX_SALON = "UNISEX_SALON", _("Unisex Salon")
+    LADIES_SALON = "LADIES_SALON", _("Ladies Salon")
 
 class SalonStatus(models.TextChoices):
     ACTIVE = "ACTIVE", _("Active")
