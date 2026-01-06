@@ -35,6 +35,25 @@ class Category(BaseModel):
         return f"{self.name} - {self.category_type} - {self.account.name}"
 
 
+class SubCategory(BaseModel):
+    from apps.authentication.models import Account
+
+    name = models.CharField(max_length=100)
+    category = models.ForeignKey(
+        Category, on_delete=models.CASCADE, related_name="subcategories"
+    )
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, related_name="account_subcategories"
+    )
+
+    class Meta:
+        unique_together = ["account", "name", "category"]
+        verbose_name_plural = "SubCategories"
+
+    def __str__(self):
+        return f"{self.name} - {self.category.name} - {self.account.name}"
+
+
 class Media(BaseModel):
     from apps.salon.models import Service, Product, Booking
     from apps.support.models import SupportTicket
