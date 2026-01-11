@@ -6,7 +6,13 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.generics import get_object_or_404
 
-from apps.salon.choices import BookingStatus, CustomerType
+from apps.salon.choices import (
+    BookingStatus,
+    CustomerType,
+    HairServiceType,
+    BridalMakeupServiceType,
+    AdditionalServiceType,
+)
 from apps.salon.models import (
     Salon,
     OpeningHours,
@@ -40,6 +46,19 @@ class OpeningHoursSerializer(serializers.ModelSerializer):
 
 class SalonSerializer(serializers.ModelSerializer):
     opening_hours = OpeningHoursSerializer(many=True, required=False)
+    hair_service_types = serializers.ListField(
+        child=serializers.ChoiceField(choices=HairServiceType.choices), required=False
+    )
+
+    bridal_makeup_service_types = serializers.ListField(
+        child=serializers.ChoiceField(choices=BridalMakeupServiceType.choices),
+        required=False,
+    )
+
+    additional_service_types = serializers.ListField(
+        child=serializers.ChoiceField(choices=AdditionalServiceType.choices),
+        required=False,
+    )
 
     class Meta:
         model = Salon
@@ -49,9 +68,11 @@ class SalonSerializer(serializers.ModelSerializer):
             "name",
             "salon_category",
             "is_provide_hair_styles",
+            "hair_service_types",
             "is_provide_bridal_makeup_services",
+            "bridal_makeup_service_types",
             "salon_type",
-            "salon_service_types",
+            "additional_service_types",
             "address_one",
             "address_two",
             "city",

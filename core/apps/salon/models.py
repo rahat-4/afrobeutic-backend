@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from django_countries.fields import CountryField
 from phonenumber_field.modelfields import PhoneNumberField
+from multiselectfield import MultiSelectField
 
 from common.models import BaseModel, Category
 
@@ -21,6 +22,9 @@ from .choices import (
     ChairStatus,
     CustomerType,
     BookingPaymentType,
+    HairServiceType,
+    BridalMakeupServiceType,
+    AdditionalServiceType,
 )
 from .utils import (
     get_salon_media_path,
@@ -41,10 +45,29 @@ class Salon(BaseModel):
         choices=SalonCategory.choices,
         default=SalonCategory.GENERAL_SALON,
     )
+    is_provide_hair_styles = models.BooleanField(default=False)
+    hair_service_types = MultiSelectField(
+        choices=HairServiceType.choices,
+        blank=True,
+        max_length=100,
+        help_text="Select one or more hair service types offered by the salon.",
+    )
+    is_provide_bridal_makeup_services = models.BooleanField(default=False)
+    bridal_makeup_service_types = MultiSelectField(
+        choices=BridalMakeupServiceType.choices,
+        blank=True,
+        max_length=100,
+        help_text="Select one or more bridal makeup service types offered by the salon.",
+    )
     salon_type = models.CharField(
         max_length=30, choices=SalonType.choices, default=SalonType.UNISEX_SALON
     )
-    salon_service_types = models.JSONField(default=list, blank=True)
+    additional_service_types = MultiSelectField(
+        choices=AdditionalServiceType.choices,
+        blank=True,
+        max_length=100,
+        help_text="Select one or more additional service types offered by the salon.",
+    )
 
     # address
     address_one = models.CharField(max_length=255)
@@ -62,9 +85,6 @@ class Salon(BaseModel):
     facebook = models.URLField(blank=True, null=True)
     instagram = models.URLField(blank=True, null=True)
     youtube = models.URLField(blank=True, null=True)
-
-    is_provide_hair_styles = models.BooleanField(default=False)
-    is_provide_bridal_makeup_services = models.BooleanField(default=False)
 
     status = models.CharField(
         max_length=10, choices=SalonStatus.choices, default=SalonStatus.ACTIVE
