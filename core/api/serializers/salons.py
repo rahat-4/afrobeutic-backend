@@ -17,7 +17,11 @@ from apps.salon.models import (
     Salon,
     OpeningHours,
     SalonMedia,
+    ServiceCategory,
+    ServiceSubCategory,
     Service,
+    ProductCategory,
+    ProductSubCategory,
     Product,
     Chair,
     Employee,
@@ -172,7 +176,14 @@ class SalonServiceSerializer(serializers.ModelSerializer):
         slug_field="uid",
         required=False,
     )
-    category = serializers.CharField(write_only=True)
+    category = serializers.SlugRelatedField(
+        queryset=ServiceCategory.objects.all(), slug_field="uid", write_only=True
+    )
+    sub_category = serializers.SlugRelatedField(
+        queryset=ServiceSubCategory.objects.all(),
+        slug_field="uid",
+        write_only=True,
+    )
     discount_price = serializers.CharField(read_only=True, source="final_price")
 
     class Meta:
@@ -181,6 +192,7 @@ class SalonServiceSerializer(serializers.ModelSerializer):
             "uid",
             "name",
             "category",
+            "sub_category",
             "discount_percentage",
             "price",
             "discount_price",
@@ -195,6 +207,19 @@ class SalonServiceSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    def validate(self, data):
+        category = data.get("category")
+        sub_category = data.get("sub_category")
+
+        if sub_category and sub_category.category != category:
+            raise serializers.ValidationError(
+                {
+                    "sub_category": "Sub-category does not belong to the selected category."
+                }
+            )
+
+        return data
+
     def validate_uploaded_images(self, value):
         """
         Ensure no more than 2 images are uploaded.
@@ -205,64 +230,63 @@ class SalonServiceSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
+
         rep["assign_employees"] = EmployeeSlimSerializer(
             instance.assign_employees.all(), many=True
         ).data
+
         rep["category"] = instance.category.name
+        rep["sub_category"] = (
+            instance.sub_category.name if instance.sub_category else None
+        )
 
         return rep
 
     def create(self, validated_data):
         uploaded_images = validated_data.pop("uploaded_images", [])
         assign_employees = validated_data.pop("assign_employees", [])
-        category_name = validated_data.pop("category")
+        category = validated_data.pop("category", None)
+        sub_category = validated_data.pop("sub_category", None)
 
         account = self.context["request"].account
 
         with transaction.atomic():
-            # Handle category
-            category = get_or_create_category(
-                category_name, account, CategoryType.SERVICE
+            service = Service.objects.create(
+                category=category, sub_category=sub_category, **validated_data
             )
-            validated_data["category"] = category
 
-            service = Service.objects.create(**validated_data)
+            if assign_employees:
+                service.assign_employees.set(assign_employees)
 
-            # Create images
-            for index, image in enumerate(uploaded_images):
+            for image in uploaded_images:
                 SalonMedia.objects.create(service=service, image=image)
 
             return service
 
     def update(self, instance, validated_data):
         uploaded_images = validated_data.pop("uploaded_images", None)
-        assign_employees = validated_data.pop("assign_employees", [])
-        category_name = validated_data.pop("category", None)
-        account = instance.account
+        assign_employees = validated_data.pop("assign_employees", None)
+        sub_category = validated_data.pop("sub_category", None)
+        category = validated_data.pop("category", None)
 
         with transaction.atomic():
-            # Handle category
-            if category_name:
-                category = get_or_create_category(
-                    category_name, account, CategoryType.SERVICE
-                )
+            if category:
                 instance.category = category
 
-            # Update service fields
+            if sub_category:
+                instance.sub_category = sub_category
+
             for attr, value in validated_data.items():
                 setattr(instance, attr, value)
+
             instance.save()
 
-            if assign_employees != []:
+            if assign_employees is not None:
                 instance.assign_employees.set(assign_employees)
 
-            # If new images are uploaded, replace old ones
             if uploaded_images is not None:
-                # Delete old images
-                SalonMedia.objects.filter(service=instance).delete()
-
-                # Create new images
-                for index, image in enumerate(uploaded_images):
+                instance.service_images.all().delete()
+                for image in uploaded_images:
                     SalonMedia.objects.create(service=instance, image=image)
 
             return instance
@@ -273,7 +297,16 @@ class SalonProductSerializer(serializers.ModelSerializer):
     uploaded_images = serializers.ListField(
         child=serializers.ImageField(), write_only=True, required=False
     )
-    category = serializers.CharField(write_only=True)
+    category = serializers.SlugRelatedField(
+        slug_field="uid",
+        queryset=ProductCategory.objects.all(),
+        write_only=True,
+    )
+    sub_category = serializers.SlugRelatedField(
+        slug_field="uid",
+        queryset=ProductSubCategory.objects.all(),
+        write_only=True,
+    )
 
     class Meta:
         model = Product
@@ -281,6 +314,7 @@ class SalonProductSerializer(serializers.ModelSerializer):
             "uid",
             "name",
             "category",
+            "sub_category",
             "price",
             "description",
             "images",
@@ -289,9 +323,26 @@ class SalonProductSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    def validate(self, data):
+        category = data.get("category")
+        sub_category = data.get("sub_category")
+
+        if sub_category and sub_category.category != category:
+            raise serializers.ValidationError(
+                {
+                    "sub_category": "Sub-category does not belong to the selected category."
+                }
+            )
+
+        return data
+
     def to_representation(self, instance):
         rep = super().to_representation(instance)
         rep["category"] = instance.category.name
+        rep["sub_category"] = (
+            instance.sub_category.name if instance.sub_category else None
+        )
+
         return rep
 
     def validate_uploaded_images(self, value):
@@ -304,17 +355,15 @@ class SalonProductSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         uploaded_images = validated_data.pop("uploaded_images", [])
-        category_name = validated_data.pop("category")
+        category = validated_data.pop("category")
+        sub_category = validated_data.pop("sub_category")
 
         account = self.context["request"].account
 
         with transaction.atomic():
-            # Handle category
-            category = get_or_create_category(
-                category_name, account, CategoryType.PRODUCT
+            product = Product.objects.create(
+                category=category, sub_category=sub_category, **validated_data
             )
-            validated_data["category"] = category
-            product = Product.objects.create(**validated_data)
 
             # Create images
             for index, image in enumerate(uploaded_images):
@@ -324,16 +373,16 @@ class SalonProductSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         uploaded_images = validated_data.pop("uploaded_images", None)
-        category_name = validated_data.pop("category", None)
+        category = validated_data.pop("category", None)
+        sub_category = validated_data.pop("sub_category", None)
         account = instance.account
 
         with transaction.atomic():
             # Handle category
-            if category_name:
-                category = get_or_create_category(
-                    category_name, account, CategoryType.PRODUCT
-                )
+            if category:
                 instance.category = category
+            if sub_category:
+                instance.sub_category = sub_category
 
             # Update product fields
             for attr, value in validated_data.items():

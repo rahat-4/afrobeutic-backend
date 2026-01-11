@@ -56,12 +56,45 @@ class SalonStatus(models.TextChoices):
     INACTIVE = "INACTIVE", _("Inactive")
 
 
+class ServiceCategoryType(models.TextChoices):
+    HAIR_SERVICES = "HAIR_SERVICES", _("Hair Services")
+    HAIR_REMOVAL_SERVICES = "HAIR_REMOVAL_SERVICES", _("Hair Removal Services")
+    BRIDAL_AND_MAKEUP_SERVICES = "BRIDAL_AND_MAKEUP_SERVICES", _(
+        "Bridal and Makeup Services"
+    )
+    MENS_GROOMING_SERVICES = "MENS_GROOMING_SERVICES", _("Men's Grooming Services")
+    SKIN_OR_FACIAL_SERVICES = "SKIN_OR_FACIAL_SERVICES", _("Skin or Facial Services")
+    NAIL_SERVICES = "NAIL_SERVICES", _("Nail Services")
+    MESSAGE_AND_BODY_SERVICES = "MESSAGE_AND_BODY_SERVICES", _(
+        "Massage and Body Services"
+    )
+    EYEBROW_AND_EYELASH_SERVICES = "EYEBROW_AND_EYELASH_SERVICES", _(
+        "Eyebrow and Eyelash Services"
+    )
+    OTHER_SERVICES = "OTHER_SERVICES", _("Other Services")
+
+
 class ServiceTimeSlot(models.TextChoices):
     MORNING = "MORNING", _("Morning")
     AFTERNOON = "AFTERNOON", _("Afternoon")
     EVENING = "EVENING", _("Evening")
     AFTER_EVENING = "AFTER_EVENING", _("After Evening")
     ANYTIME = "ANYTIME", _("Anytime")
+
+
+class ProductCategoryType(models.TextChoices):
+    HAIR_CARE_PRODUCTS = "HAIR_CARE_PRODUCTS", _("Hair Care Products")
+    SKIN_CARE_PRODUCTS = "SKIN_CARE_PRODUCTS", _("Skin Care Products")
+    MAKEUP_PRODUCTS = "MAKEUP_PRODUCTS", _("Makeup Products")
+    NAIL_CARE_PRODUCTS = "NAIL_CARE_PRODUCTS", _("Nail Care Products")
+    MENS_GROOMING_PRODUCTS = "MENS_GROOMING_PRODUCTS", _("Men's Grooming Products")
+    BODY_CARE_PRODUCTS = "BODY_CARE_PRODUCTS", _("Body Care Products")
+    HAIR_REMOVAL_PRODUCTS = "HAIR_REMOVAL_PRODUCTS", _("Hair Removal Products")
+    TOOLS_AND_ACCESSORIES = "TOOLS_AND_ACCESSORIES", _("Tools & Accessories")
+    SALON_RETAIL_AND_GIFT_PRODUCTS = "SALON_RETAIL_AND_GIFT_PRODUCTS", _(
+        "Salon Retail & Gift Products"
+    )
+    OTHER_PRODUCTS = "OTHER_PRODUCTS", _("Other Products")
 
 
 class DaysOfWeek(models.TextChoices):

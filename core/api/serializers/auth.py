@@ -84,6 +84,9 @@ class AccountSerializer(serializers.ModelSerializer):
 
 
 class MeSerializer(serializers.ModelSerializer):
+    account_type = serializers.CharField(
+        source="memberships.first.account.account_type", read_only=True
+    )
     role = serializers.SerializerMethodField()
 
     class Meta:
@@ -96,6 +99,7 @@ class MeSerializer(serializers.ModelSerializer):
             "email",
             "role",
             "country",
+            "account_type",
         ]
         read_only_fields = ["uid", "email", "role"]
 

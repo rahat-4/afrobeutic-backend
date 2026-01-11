@@ -25,6 +25,8 @@ from .choices import (
     HairServiceType,
     BridalMakeupServiceType,
     AdditionalServiceType,
+    ServiceCategoryType,
+    ProductCategoryType,
 )
 from .utils import (
     get_salon_media_path,
@@ -56,7 +58,7 @@ class Salon(BaseModel):
     bridal_makeup_service_types = MultiSelectField(
         choices=BridalMakeupServiceType.choices,
         blank=True,
-        max_length=100,
+        max_length=300,
         help_text="Select one or more bridal makeup service types offered by the salon.",
     )
     salon_type = models.CharField(
@@ -145,14 +147,32 @@ class SalonMedia(BaseModel):
         return f"Media {self.uid}"
 
 
+class ServiceCategory(BaseModel):
+    name = models.CharField(
+        max_length=100, choices=ServiceCategoryType.choices, unique=True
+    )
+
+    def __str__(self):
+        return f"UID: {self.uid} - {self.name}"
+
+
+class ServiceSubCategory(BaseModel):
+    category = models.ForeignKey(
+        ServiceCategory, on_delete=models.CASCADE, related_name="sub_categories"
+    )
+    name = models.CharField(max_length=200)
+    is_custom = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ("category", "name")
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"UID: {self.uid} - {self.category.name} → {self.name}"
+
+
 class Service(BaseModel):
     name = models.CharField(max_length=255)
-    category = models.ForeignKey(
-        Category,
-        on_delete=models.PROTECT,
-        limit_choices_to={"category_type": "SERVICE"},
-        related_name="service_category",
-    )
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.CharField(max_length=300, blank=True, null=True)
     service_duration = models.DurationField(default=timedelta(minutes=30))
@@ -169,6 +189,16 @@ class Service(BaseModel):
     )
 
     # Fk
+    category = models.ForeignKey(
+        ServiceCategory, on_delete=models.PROTECT, related_name="service_category"
+    )
+    sub_category = models.ForeignKey(
+        ServiceSubCategory,
+        on_delete=models.PROTECT,
+        related_name="service_sub_categories",
+        blank=True,
+        null=True,
+    )
     account = models.ForeignKey(
         Account, on_delete=models.CASCADE, related_name="account_services"
     )
@@ -195,18 +225,46 @@ class Service(BaseModel):
         return f"UID: {self.uid} - {self.name} - {self.salon.name}"
 
 
+class ProductCategory(BaseModel):
+    name = models.CharField(
+        max_length=100, choices=ProductCategoryType.choices, unique=True
+    )
+
+    def __str__(self):
+        return f"UID: {self.uid} - {self.name}"
+
+
+class ProductSubCategory(BaseModel):
+    category = models.ForeignKey(
+        ProductCategory, on_delete=models.CASCADE, related_name="sub_categories"
+    )
+    name = models.CharField(max_length=200)
+    is_custom = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ("category", "name")
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"UID: {self.uid} - {self.category.name} → {self.name}"
+
+
 class Product(BaseModel):
     name = models.CharField(max_length=255)
-    category = models.ForeignKey(
-        Category,
-        on_delete=models.PROTECT,
-        limit_choices_to={"category_type": "PRODUCT"},
-        related_name="product_category",
-    )
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.CharField(max_length=300, blank=True, null=True)
 
     # Fk
+    category = models.ForeignKey(
+        ProductCategory, on_delete=models.PROTECT, related_name="product_category"
+    )
+    sub_category = models.ForeignKey(
+        ProductSubCategory,
+        on_delete=models.PROTECT,
+        related_name="product_sub_categories",
+        blank=True,
+        null=True,
+    )
     account = models.ForeignKey(
         Account, on_delete=models.CASCADE, related_name="account_products"
     )

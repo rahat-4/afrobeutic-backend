@@ -11,6 +11,10 @@ from apps.salon.models import (
     Product,
     Service,
     Chair,
+    ServiceCategory,
+    ServiceSubCategory,
+    ProductCategory,
+    ProductSubCategory,
 )
 
 from .models import Media
@@ -193,3 +197,29 @@ class LeadCustomerSerializer(serializers.ModelSerializer):
             "source",
             "created_at",
         ]
+
+
+class ServiceSubCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ServiceSubCategory
+        fields = ["uid", "name", "is_custom"]
+
+
+class ServiceCategorySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = ServiceCategory
+        fields = ["uid", "name"]
+
+
+class ProductSubCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductSubCategory
+        fields = ["uid", "name", "is_custom"]
+
+
+class ProductCategorySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = ProductCategory
+        fields = ["uid", "name"]
