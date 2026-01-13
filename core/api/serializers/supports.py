@@ -3,6 +3,7 @@ from django.db import transaction
 
 from rest_framework import serializers
 
+from apps.authentication.choices import AccountType
 from apps.salon.choices import CustomerType
 from apps.support.models import (
     SupportTicket,
@@ -63,7 +64,11 @@ class AccountEnquirySerializer(serializers.ModelSerializer):
 
 class CustomerEnquirySerializer(serializers.ModelSerializer):
     salon = serializers.SlugRelatedField(
-        slug_field="uid", write_only=True, queryset=Salon.objects.all()
+        slug_field="uid",
+        write_only=True,
+        queryset=Salon.objects.all(),
+        allow_null=True,
+        required=False,
     )
     first_name = serializers.CharField(write_only=True)
     last_name = serializers.CharField(write_only=True)
@@ -100,6 +105,13 @@ class CustomerEnquirySerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         phone = attrs.get("phone")
+        account = self.context["request"].account
+        errors = {}
+
+        if account.account_type == AccountType.SALON_SHOP:
+            salon = attrs.get("salon")
+            if not salon:
+                raise serializers.ValidationError({"salon": ["Salon is required."]})
 
         if self.instance:
             allowed_fields = {"status", "type", "summary"}
@@ -126,9 +138,18 @@ class CustomerEnquirySerializer(serializers.ModelSerializer):
         last_name = validated_data.pop("last_name")
         email = validated_data.pop("email", None)
         source = validated_data.pop("source")
-        salon = validated_data["salon"]
+
+        account = self.context["request"].account
+
+        salon = None
+
+        if account.account_type == AccountType.INDIVIDUAL_STYLIST:
+            salon = Salon.objects.filter(account=account).first()
+        else:
+            salon = validated_data.pop("salon")
 
         with transaction.atomic():
+
             source = get_or_create_category(
                 source, salon.account, category_type=CategoryType.CUSTOMER_SOURCE
             )
@@ -147,6 +168,7 @@ class CustomerEnquirySerializer(serializers.ModelSerializer):
 
             ticket = AccountSupportTicket.objects.create(
                 customer=customer,
+                salon=salon,
                 **validated_data,
             )
 

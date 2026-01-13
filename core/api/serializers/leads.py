@@ -1,6 +1,7 @@
 from django.db import transaction
 from rest_framework import serializers
 
+from apps.authentication.choices import AccountType
 from apps.salon.models import Customer, Salon
 
 from common.choices import CategoryType
@@ -10,7 +11,11 @@ from common.serializers import SalonSlimSerializer
 
 class AccountLeadSerializer(serializers.ModelSerializer):
     salon = serializers.SlugRelatedField(
-        slug_field="uid", write_only=True, queryset=Salon.objects.all()
+        slug_field="uid",
+        write_only=True,
+        queryset=Salon.objects.all(),
+        allow_null=True,
+        required=False,
     )
     source = serializers.CharField(write_only=True)
 
@@ -31,8 +36,12 @@ class AccountLeadSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         phone = attrs.get("phone")
         account = self.context["request"].account
-
         errors = {}
+
+        if account.account_type == AccountType.SALON_SHOP:
+            salon = attrs.get("salon")
+            if not salon:
+                errors["salon"] = ["Salon is required."]
 
         # Check uniqueness of phone
         qs = Customer.objects.filter(account=account, phone=phone)
@@ -58,9 +67,14 @@ class AccountLeadSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         account = self.context["request"].account
         source = validated_data.pop("source")
-        salon = validated_data.pop("salon")
+        salon = None
 
         with transaction.atomic():
+            if account.account_type == AccountType.INDIVIDUAL_STYLIST:
+                salon = Salon.objects.filter(account=account).first()
+            else:
+                salon = validated_data.pop("salon")
+                
             # Handle category
             source = get_or_create_category(
                 source, account, CategoryType.CUSTOMER_SOURCE

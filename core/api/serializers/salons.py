@@ -6,6 +6,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.generics import get_object_or_404
 
+from apps.authentication.choices import AccountType
 from apps.salon.choices import (
     BookingStatus,
     CustomerType,
@@ -98,6 +99,16 @@ class SalonSerializer(serializers.ModelSerializer):
         opening_hours = attrs.get("opening_hours", [])
         errors = {}
         opening_hours_errors = {}
+
+        account = self.context["request"].account
+
+        if (
+            account.account_type == AccountType.INDIVIDUAL_STYLIST
+            and Salon.objects.filter(account=account).exists()
+        ):
+            errors["account"] = [
+                "Individual stylists cannot create more than one salon."
+            ]
 
         for day_data in opening_hours:
             day = day_data.get("day")

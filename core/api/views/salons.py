@@ -1,11 +1,10 @@
 from datetime import datetime
 
-from django.db.models import Prefetch, Count, Q
+from django.db.models import Prefetch, Count
 from django.http import FileResponse
 
 from rest_framework.generics import (
     ListAPIView,
-    RetrieveAPIView,
     ListCreateAPIView,
     RetrieveUpdateAPIView,
     RetrieveUpdateDestroyAPIView,
@@ -18,7 +17,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 
 from apps.authentication.models import AccountMembership
-from apps.salon.choices import BookingStatus, CustomerType
+from apps.salon.choices import BookingStatus
 from apps.salon.models import (
     Booking,
     Chair,
@@ -26,10 +25,8 @@ from apps.salon.models import (
     Service,
     Product,
     Employee,
-    Customer,
 )
 
-from common.filters import SalonLeadFilter
 from common.permissions import (
     IsOwner,
     IsOwnerOrAdmin,
@@ -47,7 +44,6 @@ from ..serializers.salons import (
     SalonBookingCalendarSerializer,
     SalonBookingCalendarDetailSerializer,
     SalonLookBookSerializer,
-    # SalonLeadSerializer,
 )
 
 
