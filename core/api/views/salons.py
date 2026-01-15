@@ -40,6 +40,7 @@ from ..serializers.salons import (
     SalonProductSerializer,
     SalonChairSerializer,
     EmployeeSerializer,
+    SalonBookingSerializer,
     SalonChairBookingSerializer,
     SalonBookingCalendarSerializer,
     SalonBookingCalendarDetailSerializer,
@@ -372,6 +373,74 @@ class SalonChairDetailView(RetrieveUpdateDestroyAPIView):
             account=account,
             account__members__user=user,
         )
+
+class SalonbookingListView(ListCreateAPIView):
+    serializer_class = SalonBookingSerializer
+    permission_classes = [IsOwnerOrAdminOrStaff]
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+
+    search_fields = [
+        "customer__first_name",
+        "customer__last_name",
+        "customer__email",
+        "customer__phone",
+        "booking_id",
+    ]
+    filterset_fields = {
+        "booking_date": ["exact", "gte", "lte"],
+        "status": ["exact"],
+    }
+    ordering_fields = ["created_at", "booking_date", "booking_time"]
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        user = self.request.user
+        account = self.request.account
+        salon_uid = self.kwargs.get("salon_uid")
+
+        return Booking.objects.filter(
+            account=account,
+            salon__uid=salon_uid,
+            account__members__user=user,
+        )
+
+    def perform_create(self, serializer):
+        account = self.request.account
+        salon_uid = self.kwargs.get("salon_uid")
+        salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+        serializer.save(salon=salon, account=account)
+
+
+
+class SalonBookingDetailView(RetrieveUpdateAPIView):
+    serializer_class = SalonChairBookingSerializer
+    permission_classes = [IsOwnerOrAdminOrStaff]
+    lookup_field = "uid"
+    lookup_url_kwarg = "booking_uid"
+
+    def get_object(self):
+        user = self.request.user
+        account = self.request.account
+        salon_uid = self.kwargs.get("salon_uid")
+        booking_uid = self.kwargs.get("booking_uid")
+
+        return get_object_or_404(
+            Booking,
+            uid=booking_uid,
+            salon__uid=salon_uid,
+            account=account,
+            account__members__user=user,
+        )
+
+    def perform_update(self, serializer):
+        account = self.request.account
+        salon_uid = self.kwargs.get("salon_uid")
+        salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+        serializer.save(salon=salon, account=account)
 
 
 class SalonChairBookingListView(ListCreateAPIView):

@@ -611,6 +611,126 @@ class BookingProductsSlimSerializer(serializers.ModelSerializer):
         ]
 
 
+class SalonBookingSerializer(serializers.ModelSerializer):
+    customer = SalonCustomerSlimSerializer()
+    services = serializers.SlugRelatedField(
+        queryset=Service.objects.all(),
+        many=True,
+        slug_field="uid",
+        required=False,
+        allow_null=True,
+    )
+    products = serializers.SlugRelatedField(
+        queryset=Product.objects.all(),
+        many=True,
+        slug_field="uid",
+        required=False,
+        allow_null=True,
+    )
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+
+        rep["services"] = BookingServicesSlimSerializer(
+            instance.services.all(), many=True
+        ).data
+
+        rep["products"] = BookingProductsSlimSerializer(
+            instance.products.all(), many=True
+        ).data
+
+        return rep
+
+    class Meta:
+        model = Booking
+        fields = [
+            "uid",
+            "customer",
+            "booking_id",
+            "booking_date",
+            "booking_time",
+            "status",
+            "booking_duration",
+            "notes",
+            "services",
+            "products",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["booking_duration", "booking_id"]
+
+    def create(self, validated_data):
+        customer = validated_data.pop("customer")
+        services = validated_data.pop("services", [])
+        products = validated_data.pop("products", [])
+        account = self.context["request"].account
+
+        with transaction.atomic():
+            customer_source = customer.get("source", "Booking")
+
+            source = get_or_create_category(
+                customer_source, account, category_type=CategoryType.CUSTOMER_SOURCE
+            )
+
+            customer_obj, _ = Customer.objects.get_or_create(
+                account=validated_data["account"],
+                phone=customer["phone"],
+                defaults={
+                    "first_name": customer["first_name"],
+                    "last_name": customer["last_name"],
+                    "email": customer.get("email"),
+                    "source": source,
+                    "type": CustomerType.CUSTOMER,
+                    "salon": validated_data["salon"],
+                },
+            )
+            validated_data["customer"] = customer_obj
+
+            total_duration = sum(
+                (service.service_duration for service in services), timedelta()
+            )
+            validated_data["booking_duration"] = total_duration
+
+            booking = Booking.objects.create(**validated_data)
+            booking.services.set(services)
+            if products:
+                booking.products.set(products)
+
+            return booking
+
+    def update(self, instance, validated_data):
+        customer_data = validated_data.pop("customer", None)
+        services = validated_data.pop("services", None)
+        products = validated_data.pop("products", None)
+
+        with transaction.atomic():
+            # Update customer info
+            if customer_data:
+                customer = instance.customer
+                for attr, value in customer_data.items():
+                    setattr(customer, attr, value)
+                customer.save()
+
+            # Update booking fields
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+
+            # Update services
+            if services is not None:
+                instance.services.set(services)
+                total_duration = sum(
+                    (service.service_duration for service in services), timedelta()
+                )
+                instance.booking_duration = total_duration
+
+            # Update products
+            if products is not None:
+                instance.products.set(products)
+
+            instance.save()
+
+            return instance
+
 class SalonChairBookingSerializer(serializers.ModelSerializer):
     customer = SalonCustomerSlimSerializer()
     services = serializers.SlugRelatedField(

@@ -14,6 +14,8 @@ from ..views.salons import (
     SalonChairDetailView,
     SalonChairBookingListView,
     SalonChairBookingDetailView,
+    SalonbookingListView,
+    SalonBookingDetailView,
     SalonBookingCalendarListView,
     SalonBookingCalendarDetailView,
     SalonLookBookListView,
@@ -50,6 +52,16 @@ urlpatterns = [
         "/<uuid:salon_uid>/lookbook",
         SalonLookBookListView.as_view(),
         name="salon.lookbook-list",
+    ),
+    path(
+        "/<uuid:salon_uid>/bookings/<uuid:booking_uid>",
+        SalonBookingDetailView.as_view(),
+        name="salon.booking-detail",
+    ),
+    path(
+        "/<uuid:salon_uid>/bookings",
+        SalonbookingListView.as_view(),
+        name="salon.booking-list",
     ),
     path(
         "/<uuid:salon_uid>/chairs/<uuid:chair_uid>/bookings/<uuid:booking_uid>",

@@ -398,7 +398,7 @@ class Booking(BaseModel):
         Customer, on_delete=models.CASCADE, related_name="customer_bookings"
     )
     chair = models.ForeignKey(
-        Chair, on_delete=models.CASCADE, related_name="chair_bookings"
+        Chair, on_delete=models.CASCADE, blank=True, null=True, related_name="chair_bookings"
     )
     employee = models.ForeignKey(
         Employee,
