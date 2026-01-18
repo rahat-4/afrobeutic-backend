@@ -21,23 +21,9 @@ from ..views.salons import (
     SalonLookBookListView,
     SalonLookBookDetailView,
     SalonBookingReceiptDownloadAPIView,
-    # SalonLeadListView,
-    # SalonLeadDetailView,
 )
 
 urlpatterns = [
-    # # TODO: Remove it later
-    # path(
-    #     "/<uuid:salon_uid>/leads/<uuid:lead_uid>",
-    #     SalonLeadDetailView.as_view(),
-    #     name="salon-lead-detail",
-    # ),
-    # # TODO: Remove it later
-    # path(
-    #     "/<uuid:salon_uid>/leads",
-    #     SalonLeadListView.as_view(),
-    #     name="salon-lead-list",
-    # ),
     path(
         "/<uuid:salon_uid>/bookings/<uuid:booking_uid>/receipt",
         SalonBookingReceiptDownloadAPIView.as_view(),

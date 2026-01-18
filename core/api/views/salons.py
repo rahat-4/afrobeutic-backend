@@ -374,6 +374,7 @@ class SalonChairDetailView(RetrieveUpdateDestroyAPIView):
             account__members__user=user,
         )
 
+
 class SalonbookingListView(ListCreateAPIView):
     serializer_class = SalonBookingSerializer
     permission_classes = [IsOwnerOrAdminOrStaff]
@@ -390,10 +391,7 @@ class SalonbookingListView(ListCreateAPIView):
         "customer__phone",
         "booking_id",
     ]
-    filterset_fields = {
-        "booking_date": ["exact", "gte", "lte"],
-        "status": ["exact"],
-    }
+    filterset_fields = ["booking_date", "status"]
     ordering_fields = ["created_at", "booking_date", "booking_time"]
     ordering = ["-created_at"]
 
@@ -413,7 +411,6 @@ class SalonbookingListView(ListCreateAPIView):
         salon_uid = self.kwargs.get("salon_uid")
         salon = get_object_or_404(Salon, uid=salon_uid, account=account)
         serializer.save(salon=salon, account=account)
-
 
 
 class SalonBookingDetailView(RetrieveUpdateAPIView):
@@ -694,66 +691,3 @@ class SalonBookingReceiptDownloadAPIView(APIView):
             filename=filename,
             content_type="application/pdf",
         )
-
-
-# # TODO: Remove it later
-# class SalonLeadListView(ListCreateAPIView):
-#     serializer_class = SalonLeadSerializer
-#     permission_classes = [IsOwnerOrAdminOrStaff]
-#     filter_backends = [
-#         DjangoFilterBackend,
-#         filters.SearchFilter,
-#         filters.OrderingFilter,
-#     ]
-#     filterset_class = SalonLeadFilter
-#     search_fields = [
-#         "first_name",
-#         "last_name",
-#         "phone",
-#         "email",
-#         "source__name",
-#     ]
-#     ordering_fields = ["created_at"]
-#     ordering = ["-created_at"]
-
-#     def get_queryset(self):
-#         user = self.request.user
-#         account = self.request.account
-#         salon_uid = self.kwargs.get("salon_uid")
-
-#         return Customer.objects.filter(
-#             account=account,
-#             salon__uid=salon_uid,
-#             account__members__user=user,
-#             type=CustomerType.LEAD,
-#         )
-
-#     def perform_create(self, serializer):
-#         account = self.request.account
-#         salon_uid = self.kwargs.get("salon_uid")
-
-#         salon = get_object_or_404(Salon, uid=salon_uid)
-
-#         serializer.save(account=account, salon=salon)
-
-
-# # TODO: Remove it later
-# class SalonLeadDetailView(RetrieveUpdateAPIView):
-#     serializer_class = SalonLeadSerializer
-#     lookup_url_kwarg = "lead_uid"
-
-#     def get_permissions(self):
-#         if self.request.method in ["PUT", "PATCH"]:
-#             self.permission_classes = [IsOwnerOrAdmin]
-#         else:
-#             self.permission_classes = [IsOwnerOrAdminOrStaff]
-
-#         return super().get_permissions()
-
-#     def get_object(self):
-#         lead_uid = self.kwargs.get("lead_uid")
-
-#         return get_object_or_404(
-#             Customer,
-#             uid=lead_uid,
-#         )
