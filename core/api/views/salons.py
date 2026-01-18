@@ -378,6 +378,7 @@ class SalonChairDetailView(RetrieveUpdateDestroyAPIView):
 class SalonbookingListView(ListCreateAPIView):
     serializer_class = SalonBookingSerializer
     permission_classes = [IsOwnerOrAdminOrStaff]
+    pagination_class = None
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,

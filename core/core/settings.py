@@ -67,7 +67,6 @@ MIDDLEWARE = [
     "common.middlewares.CurrentAccountMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    # "simple_history.middleware.HistoricalRequestMiddleware",
 ]
 
 ROOT_URLCONF = "core.urls"
