@@ -21,9 +21,17 @@ from ..views.salons import (
     SalonLookBookListView,
     SalonLookBookDetailView,
     SalonBookingReceiptDownloadAPIView,
+    TopServiceCategoryRevenueView,
+    TopProductCategoryRevenueView,
+    TopServicesRevenueView,
+    TopProductsRevenueView
 )
 
 urlpatterns = [
+    path("/<uuid:salon_uid>/analytics/product-revenue", TopProductsRevenueView, name="product-revenue"),
+    path("/<uuid:salon_uid>/analytics/service-revenue", TopServicesRevenueView, name="service-revenue"),
+    path("/<uuid:salon_uid>/analytics/product-categories", TopProductCategoryRevenueView, name="top-product-category"),
+    path("/<uuid:salon_uid>/analytics/service-categories", TopServiceCategoryRevenueView, name="top-service-category"),
     path(
         "/<uuid:salon_uid>/bookings/<uuid:booking_uid>/receipt",
         SalonBookingReceiptDownloadAPIView.as_view(),
