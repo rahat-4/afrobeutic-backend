@@ -13,7 +13,7 @@ from rest_framework.generics import (
     RetrieveUpdateDestroyAPIView,
     get_object_or_404,
 )
-from res_framework import generics
+from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework import filters, status
 from rest_framework.views import APIView
@@ -381,7 +381,7 @@ class SalonChairDetailView(RetrieveUpdateDestroyAPIView):
         )
 
 
-class SalonbookingListView(ListCreateAPIView):
+class SalonBookingListView(ListCreateAPIView):
     serializer_class = SalonBookingSerializer
     permission_classes = [IsOwnerOrAdminOrStaff]
     pagination_class = None
@@ -421,7 +421,6 @@ class SalonbookingListView(ListCreateAPIView):
         salon_uid = self.kwargs.get("salon_uid")
         salon = get_object_or_404(Salon, uid=salon_uid, account=account)
         serializer.save(salon=salon, account=account)
-
 
 
 class SalonBookingDetailView(RetrieveUpdateAPIView):
@@ -708,40 +707,43 @@ class BaseRevenueAnalyticsView(generics.GenericAPIView):
     """Base view for revenue analytics with time filtering"""
 
     permission_classes = [IsOwnerOrAdminOrStaff]
-    
+
     def get_date_range(self, period):
         """Calculate date range based on period filter"""
         today = timezone.now().date()
-        
-        if period == 'this_week':
+
+        if period == "this_week":
             start_date = today - timedelta(days=today.weekday())
             end_date = today
-        elif period == 'this_month':
+        elif period == "this_month":
             start_date = today.replace(day=1)
             end_date = today
-        elif period == 'last_6_months':
+        elif period == "last_6_months":
             start_date = today - timedelta(days=180)
             end_date = today
-        elif period == 'last_year':
+        elif period == "last_year":
             start_date = today - timedelta(days=365)
             end_date = today
         else:
             # Default to this month
             start_date = today.replace(day=1)
             end_date = today
-        
+
         return start_date, end_date
-    
+
     def get_completed_bookings_queryset(self, start_date, end_date):
         """Get completed bookings within date range"""
-        
+
+        salon_uid = self.kwargs.get("salon_uid")
+        salon = get_object_or_404(Salon, uid=salon_uid, account=self.request.account)
+
         return Booking.objects.filter(
             status=BookingStatus.COMPLETED,
             booking_date__gte=start_date,
             booking_date__lte=end_date,
-            account=self.request.user.account
+            salon=salon,
+            account=self.request.account,
         )
-
 
 
 class TopServiceCategoryRevenueView(BaseRevenueAnalyticsView):
@@ -749,51 +751,59 @@ class TopServiceCategoryRevenueView(BaseRevenueAnalyticsView):
     GET /api/analytics/revenue/service-categories/?period=this_week
     Returns top 5 service categories by revenue
     """
-    
+
     def get(self, request, *args, **kwargs):
-        period = request.query_params.get('period', 'this_month')
+        period = request.query_params.get("period", "this_month")
         start_date, end_date = self.get_date_range(period)
 
-        
         bookings = self.get_completed_bookings_queryset(start_date, end_date)
-        
+
         # Calculate revenue per service category
-        category_revenue = bookings.values(
-            'services__category__uid',
-            'services__category__name'
-        ).annotate(
-            total_revenue=Sum(
-                F('services__price') * (1 - F('services__discount_percentage') / 100),
-                output_field=DecimalField(max_digits=12, decimal_places=2)
+        category_revenue = (
+            bookings.values("services__category__uid", "services__category__name")
+            .annotate(
+                total_revenue=Sum(
+                    F("services__price")
+                    * (1 - F("services__discount_percentage") / 100),
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                )
             )
-        ).filter(
-            total_revenue__gt=0
-        ).order_by('-total_revenue')[:5]
-        
+            .filter(total_revenue__gt=0)
+            .order_by("-total_revenue")[:5]
+        )
+
         # Format response for pie chart
         data = []
-        total = Decimal('0.00')
-        
+        total = Decimal("0.00")
+
         for item in category_revenue:
-            revenue = item['total_revenue'] or Decimal('0.00')
+            revenue = item["total_revenue"] or Decimal("0.00")
             total += revenue
-            data.append({
-                'category_uid': item['services__category__uid'],
-                'category_name': item['services__category__name'],
-                'revenue': float(revenue),
-            })
-        
+            data.append(
+                {
+                    "category_uid": item["services__category__uid"],
+                    "category_name": item["services__category__name"],
+                    "revenue": float(revenue),
+                }
+            )
+
         # Add percentages
         for item in data:
-            item['percentage'] = round((Decimal(str(item['revenue'])) / total * 100), 2) if total > 0 else 0
-        
-        return Response({
-            'period': period,
-            'start_date': start_date,
-            'end_date': end_date,
-            'total_revenue': float(total),
-            'data': data
-        })
+            item["percentage"] = (
+                round((Decimal(str(item["revenue"])) / total * 100), 2)
+                if total > 0
+                else 0
+            )
+
+        return Response(
+            {
+                "period": period,
+                "start_date": start_date,
+                "end_date": end_date,
+                "total_revenue": float(total),
+                "data": data,
+            }
+        )
 
 
 class TopProductCategoryRevenueView(BaseRevenueAnalyticsView):
@@ -801,50 +811,58 @@ class TopProductCategoryRevenueView(BaseRevenueAnalyticsView):
     GET /api/analytics/revenue/product-categories/?period=this_month
     Returns top 5 product categories by revenue
     """
-    
+
     def get(self, request, *args, **kwargs):
-        period = request.query_params.get('period', 'this_month')
+        period = request.query_params.get("period", "this_month")
         start_date, end_date = self.get_date_range(period)
-        
+
         bookings = self.get_completed_bookings_queryset(start_date, end_date)
-        
+
         # Calculate revenue per product category
-        category_revenue = bookings.values(
-            'products__category__uid',
-            'products__category__name'
-        ).annotate(
-            total_revenue=Sum(
-                'products__price',
-                output_field=DecimalField(max_digits=12, decimal_places=2)
+        category_revenue = (
+            bookings.values("products__category__uid", "products__category__name")
+            .annotate(
+                total_revenue=Sum(
+                    "products__price",
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                )
             )
-        ).filter(
-            total_revenue__gt=0
-        ).order_by('-total_revenue')[:5]
-        
+            .filter(total_revenue__gt=0)
+            .order_by("-total_revenue")[:5]
+        )
+
         # Format response for pie chart
         data = []
-        total = Decimal('0.00')
-        
+        total = Decimal("0.00")
+
         for item in category_revenue:
-            revenue = item['total_revenue'] or Decimal('0.00')
+            revenue = item["total_revenue"] or Decimal("0.00")
             total += revenue
-            data.append({
-                'category_uid': item['products__category__uid'],
-                'category_name': item['products__category__name'],
-                'revenue': float(revenue),
-            })
-        
+            data.append(
+                {
+                    "category_uid": item["products__category__uid"],
+                    "category_name": item["products__category__name"],
+                    "revenue": float(revenue),
+                }
+            )
+
         # Add percentages
         for item in data:
-            item['percentage'] = round((Decimal(str(item['revenue'])) / total * 100), 2) if total > 0 else 0
-        
-        return Response({
-            'period': period,
-            'start_date': start_date,
-            'end_date': end_date,
-            'total_revenue': float(total),
-            'data': data
-        })
+            item["percentage"] = (
+                round((Decimal(str(item["revenue"])) / total * 100), 2)
+                if total > 0
+                else 0
+            )
+
+        return Response(
+            {
+                "period": period,
+                "start_date": start_date,
+                "end_date": end_date,
+                "total_revenue": float(total),
+                "data": data,
+            }
+        )
 
 
 class TopServicesRevenueView(BaseRevenueAnalyticsView):
@@ -852,45 +870,51 @@ class TopServicesRevenueView(BaseRevenueAnalyticsView):
     GET /api/analytics/revenue/services/?period=last_6_months
     Returns top 5 individual services by revenue (Line chart data)
     """
-    
+
     def get(self, request, *args, **kwargs):
-        period = request.query_params.get('period', 'this_month')
+        period = request.query_params.get("period", "this_month")
         start_date, end_date = self.get_date_range(period)
-        
+
         bookings = self.get_completed_bookings_queryset(start_date, end_date)
-        
+
         # Calculate revenue per service
-        service_revenue = bookings.values(
-            'services__uid',
-            'services__name',
-            'services__category__name'
-        ).annotate(
-            total_revenue=Sum(
-                F('services__price') * (1 - F('services__discount_percentage') / 100),
-                output_field=DecimalField(max_digits=12, decimal_places=2)
-            ),
-            booking_count=Count('id')
-        ).filter(
-            total_revenue__gt=0
-        ).order_by('-total_revenue')[:5]
-        
+        service_revenue = (
+            bookings.values(
+                "services__uid", "services__name", "services__category__name"
+            )
+            .annotate(
+                total_revenue=Sum(
+                    F("services__price")
+                    * (1 - F("services__discount_percentage") / 100),
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                ),
+                booking_count=Count("id"),
+            )
+            .filter(total_revenue__gt=0)
+            .order_by("-total_revenue")[:5]
+        )
+
         # Format response for line chart
         data = []
         for item in service_revenue:
-            data.append({
-                'service_uid': item['services__uid'],
-                'service_name': item['services__name'],
-                'category_name': item['services__category__name'],
-                'revenue': float(item['total_revenue'] or Decimal('0.00')),
-                'booking_count': item['booking_count']
-            })
-        
-        return Response({
-            'period': period,
-            'start_date': start_date,
-            'end_date': end_date,
-            'data': data
-        })
+            data.append(
+                {
+                    "service_uid": item["services__uid"],
+                    "service_name": item["services__name"],
+                    "category_name": item["services__category__name"],
+                    "revenue": float(item["total_revenue"] or Decimal("0.00")),
+                    "booking_count": item["booking_count"],
+                }
+            )
+
+        return Response(
+            {
+                "period": period,
+                "start_date": start_date,
+                "end_date": end_date,
+                "data": data,
+            }
+        )
 
 
 class TopProductsRevenueView(BaseRevenueAnalyticsView):
@@ -898,42 +922,47 @@ class TopProductsRevenueView(BaseRevenueAnalyticsView):
     GET /api/analytics/revenue/products/?period=last_year
     Returns top 5 individual products by revenue (Line chart data)
     """
-    
+
     def get(self, request, *args, **kwargs):
-        period = request.query_params.get('period', 'this_month')
+        period = request.query_params.get("period", "this_month")
         start_date, end_date = self.get_date_range(period)
-        
+
         bookings = self.get_completed_bookings_queryset(start_date, end_date)
-        
+
         # Calculate revenue per product
-        product_revenue = bookings.values(
-            'products__uid',
-            'products__name',
-            'products__category__name'
-        ).annotate(
-            total_revenue=Sum(
-                'products__price',
-                output_field=DecimalField(max_digits=12, decimal_places=2)
-            ),
-            booking_count=Count('id')
-        ).filter(
-            total_revenue__gt=0
-        ).order_by('-total_revenue')[:5]
-        
+        product_revenue = (
+            bookings.values(
+                "products__uid", "products__name", "products__category__name"
+            )
+            .annotate(
+                total_revenue=Sum(
+                    "products__price",
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                ),
+                booking_count=Count("id"),
+            )
+            .filter(total_revenue__gt=0)
+            .order_by("-total_revenue")[:5]
+        )
+
         # Format response for line chart
         data = []
         for item in product_revenue:
-            data.append({
-                'product_uid': item['products__uid'],
-                'product_name': item['products__name'],
-                'category_name': item['products__category__name'],
-                'revenue': float(item['total_revenue'] or Decimal('0.00')),
-                'booking_count': item['booking_count']
-            })
-        
-        return Response({
-            'period': period,
-            'start_date': start_date,
-            'end_date': end_date,
-            'data': data
-        })
+            data.append(
+                {
+                    "product_uid": item["products__uid"],
+                    "product_name": item["products__name"],
+                    "category_name": item["products__category__name"],
+                    "revenue": float(item["total_revenue"] or Decimal("0.00")),
+                    "booking_count": item["booking_count"],
+                }
+            )
+
+        return Response(
+            {
+                "period": period,
+                "start_date": start_date,
+                "end_date": end_date,
+                "data": data,
+            }
+        )

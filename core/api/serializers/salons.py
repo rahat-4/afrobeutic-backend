@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, time
+from decimal import Decimal
 
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
@@ -659,9 +660,17 @@ class SalonBookingSerializer(serializers.ModelSerializer):
         return total_services_price + total_products_price
 
     def get_final_price(self, obj):
-        final_services_price = sum(s.final_price() for s in obj.services.all())
-        total_products_price = sum(p.price for p in obj.products.all())
-        return final_services_price + total_products_price + obj.tips_amount
+        final_services_price = sum(
+            (Decimal(s.final_price()) for s in obj.services.all()), Decimal("0.00")
+        )
+
+        total_products_price = sum(
+            (p.price for p in obj.products.all()), Decimal("0.00")
+        )
+
+        tips_amount = obj.tips_amount or Decimal("0.00")
+
+        return final_services_price + total_products_price + tips_amount
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
@@ -1217,11 +1226,13 @@ class ServiceCategoryRevenueSerializer(serializers.Serializer):
     revenue = serializers.DecimalField(max_digits=12, decimal_places=2)
     percentage = serializers.DecimalField(max_digits=5, decimal_places=2)
 
+
 class ProductCategoryRevenueSerializer(serializers.Serializer):
     category_uid = serializers.UUIDField()
     category_name = serializers.CharField()
     revenue = serializers.DecimalField(max_digits=12, decimal_places=2)
     percentage = serializers.DecimalField(max_digits=5, decimal_places=2)
+
 
 class ServiceRevenueSerializer(serializers.Serializer):
     service_uid = serializers.UUIDField()
@@ -1229,6 +1240,7 @@ class ServiceRevenueSerializer(serializers.Serializer):
     category_name = serializers.CharField()
     revenue = serializers.DecimalField(max_digits=12, decimal_places=2)
     booking_count = serializers.IntegerField()
+
 
 class ProductRevenueSerializer(serializers.Serializer):
     product_uid = serializers.UUIDField()

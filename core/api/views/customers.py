@@ -8,7 +8,7 @@ from apps.salon.models import Customer
 
 from common.permissions import IsOwnerOrAdminOrStaff
 
-from ..serializers.customers import CustomerSerializer
+from ..serializers.customers import CustomerSerializer, CustomerProfileSerializer
 
 
 class CustomerListView(ListAPIView):
@@ -31,6 +31,18 @@ class CustomerListView(ListAPIView):
 
 class CustomerDetailView(RetrieveAPIView):
     serializer_class = CustomerSerializer
+    permission_classes = [IsOwnerOrAdminOrStaff]
+    lookup_field = "uid"
+    lookup_url_kwarg = "customer_uid"
+
+    def get_object(self):
+        account = self.request.account
+        customer_uid = self.kwargs["customer_uid"]
+        return get_object_or_404(Customer, account=account, uid=customer_uid)
+
+
+class CustomerProfileView(RetrieveAPIView):
+    serializer_class = CustomerProfileSerializer
     permission_classes = [IsOwnerOrAdminOrStaff]
     lookup_field = "uid"
     lookup_url_kwarg = "customer_uid"

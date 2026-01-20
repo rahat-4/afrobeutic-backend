@@ -56,18 +56,16 @@ class CustomerEnquiryFilter(django_filters.FilterSet):
         fields = ["status", "type", "source"]
 
 
-
-
-
 # ?date_type=today
 # ?date_type=next_day
-# ?date_type=prev_day
+# ?date_type=previous_day
 # ?date_type=this_month
 # ?date_type=previous_month
 # ?date_type=last_6_month
 # ?date_type=one_year
 # ?booking_date=2026-01-20
 # ?start_date=2026-01-01&end_date=2026-01-31
+
 
 class BookingDateFilter(filters.FilterSet):
     date_type = filters.CharFilter(method="filter_date_type")
@@ -88,8 +86,16 @@ class BookingDateFilter(filters.FilterSet):
         if value == "next_day":
             return queryset.filter(booking_date=today + timedelta(days=1))
 
-        if value == "prev_day":
+        if value == "previous_day":
             return queryset.filter(booking_date=today - timedelta(days=1))
+
+        if value == "this_week":
+            # Start from Monday of current week
+            start_of_week = today - timedelta(days=today.weekday())
+            return queryset.filter(
+                booking_date__gte=start_of_week,
+                booking_date__lte=today,
+            )
 
         if value == "this_month":
             return queryset.filter(
@@ -125,8 +131,6 @@ class BookingDateFilter(filters.FilterSet):
         end_date = self.data.get("end_date")
 
         if start_date and end_date:
-            return queryset.filter(
-                booking_date__range=[start_date, end_date]
-            )
+            return queryset.filter(booking_date__range=[start_date, end_date])
 
         return queryset

@@ -14,7 +14,7 @@ from ..views.salons import (
     SalonChairDetailView,
     SalonChairBookingListView,
     SalonChairBookingDetailView,
-    SalonbookingListView,
+    SalonBookingListView,
     SalonBookingDetailView,
     SalonBookingCalendarListView,
     SalonBookingCalendarDetailView,
@@ -24,14 +24,30 @@ from ..views.salons import (
     TopServiceCategoryRevenueView,
     TopProductCategoryRevenueView,
     TopServicesRevenueView,
-    TopProductsRevenueView
+    TopProductsRevenueView,
 )
 
 urlpatterns = [
-    path("/<uuid:salon_uid>/analytics/product-revenue", TopProductsRevenueView, name="product-revenue"),
-    path("/<uuid:salon_uid>/analytics/service-revenue", TopServicesRevenueView, name="service-revenue"),
-    path("/<uuid:salon_uid>/analytics/product-categories", TopProductCategoryRevenueView, name="top-product-category"),
-    path("/<uuid:salon_uid>/analytics/service-categories", TopServiceCategoryRevenueView, name="top-service-category"),
+    path(
+        "/<uuid:salon_uid>/analytics/product-revenue",
+        TopProductsRevenueView.as_view(),
+        name="product-revenue",
+    ),
+    path(
+        "/<uuid:salon_uid>/analytics/service-revenue",
+        TopServicesRevenueView.as_view(),
+        name="service-revenue",
+    ),
+    path(
+        "/<uuid:salon_uid>/analytics/product-categories",
+        TopProductCategoryRevenueView.as_view(),
+        name="top-product-category",
+    ),
+    path(
+        "/<uuid:salon_uid>/analytics/service-categories",
+        TopServiceCategoryRevenueView.as_view(),
+        name="top-service-category",
+    ),
     path(
         "/<uuid:salon_uid>/bookings/<uuid:booking_uid>/receipt",
         SalonBookingReceiptDownloadAPIView.as_view(),
@@ -54,7 +70,7 @@ urlpatterns = [
     ),
     path(
         "/<uuid:salon_uid>/bookings",
-        SalonbookingListView.as_view(),
+        SalonBookingListView.as_view(),
         name="salon.booking-list",
     ),
     path(

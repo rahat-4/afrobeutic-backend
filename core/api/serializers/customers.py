@@ -22,3 +22,20 @@ class CustomerSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+
+class CustomerProfileSerializer(serializers.ModelSerializer):
+    source = serializers.CharField(source="source.name")
+
+    class Meta:
+        model = Customer
+        fields = [
+            "uid",
+            "first_name",
+            "last_name",
+            "email",
+            "phone",
+            "source",
+            "created_at",
+            "updated_at",
+        ]
