@@ -415,7 +415,7 @@ class SalonbookingListView(ListCreateAPIView):
 
 
 class SalonBookingDetailView(RetrieveUpdateAPIView):
-    serializer_class = SalonChairBookingSerializer
+    serializer_class = SalonBookingSerializer
     permission_classes = [IsOwnerOrAdminOrStaff]
     lookup_field = "uid"
     lookup_url_kwarg = "booking_uid"

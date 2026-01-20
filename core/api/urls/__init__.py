@@ -10,4 +10,6 @@ urlpatterns = [
     path("/support", include("api.urls.supports")),
     path("/config", include("api.urls.config")),
     path("/admin", include("api.urls.admin")),
+    path("/subscriptions", include("api.urls.subscriptions")),
+    path("/public", include("api.urls.public")),
 ]
