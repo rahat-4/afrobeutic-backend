@@ -715,6 +715,9 @@ class BaseRevenueAnalyticsView(generics.GenericAPIView):
         if period == "this_week":
             start_date = today - timedelta(days=today.weekday())
             end_date = today
+        elif period == "last_week":
+            start_date = today - timedelta(days=today.weekday() + 7)
+            end_date = start_date + timedelta(days=6)
         elif period == "this_month":
             start_date = today.replace(day=1)
             end_date = today
@@ -965,4 +968,303 @@ class TopProductsRevenueView(BaseRevenueAnalyticsView):
                 "end_date": end_date,
                 "data": data,
             }
+        )
+
+
+class CustomerAnalysisApiView(APIView):
+    permission_classes = [IsOwnerOrAdminOrStaff]
+
+    def get(self, request, salon_uid, *args, **kwargs):
+        account = request.account
+        salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+
+        # Get time period from query params (default: 'all_time')
+        period = request.query_params.get("period", "all_time")
+
+        # Calculate date ranges
+        now = timezone.now()
+        today = now.date()
+
+        if period == "this_week":
+            start_date = today - timedelta(days=today.weekday())  # Monday
+            end_date = today
+        elif period == "last_week":
+            start_date = today - timedelta(days=today.weekday() + 7)
+            end_date = start_date + timedelta(days=6)
+        elif period == "this_month":
+            start_date = today.replace(day=1)
+            end_date = today
+        elif period == "all_time":
+            start_date = None
+            end_date = None
+        else:
+            return Response(
+                {
+                    "error": "Invalid period. Use: this_week, last_week, this_month, or all_time"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Base queryset - filter completed bookings
+        bookings = Booking.objects.filter(
+            salon=salon, account=account, status=BookingStatus.COMPLETED
+        )
+
+        # Apply date filter if not all_time
+        if start_date and end_date:
+            bookings = bookings.filter(
+                booking_date__gte=start_date, booking_date__lte=end_date
+            )
+
+        # Get all unique customers who had bookings in this period
+        customers_in_period = bookings.values_list("customer_id", flat=True).distinct()
+
+        # For each customer, check if they had any completed bookings BEFORE this period
+        new_customers = []
+        repeated_customers = []
+
+        for customer_id in customers_in_period:
+            # Check if customer had any completed bookings before this period
+            if start_date:
+                # For specific time periods, check bookings before start_date
+                previous_bookings = Booking.objects.filter(
+                    salon=salon,
+                    account=account,
+                    customer_id=customer_id,
+                    status=BookingStatus.COMPLETED,
+                    booking_date__lt=start_date,
+                ).exists()
+            else:
+                # For 'all_time', we consider the first booking
+                # Get customer's first completed booking
+                first_booking = (
+                    Booking.objects.filter(
+                        salon=salon,
+                        account=account,
+                        customer_id=customer_id,
+                        status=BookingStatus.COMPLETED,
+                    )
+                    .order_by("booking_date", "booking_time")
+                    .first()
+                )
+
+                # Check if customer has more than one booking
+                previous_bookings = (
+                    Booking.objects.filter(
+                        salon=salon,
+                        account=account,
+                        customer_id=customer_id,
+                        status=BookingStatus.COMPLETED,
+                    ).count()
+                    > 1
+                )
+
+            if previous_bookings:
+                repeated_customers.append(customer_id)
+            else:
+                new_customers.append(customer_id)
+
+        # Count bookings for each category
+        new_customer_booking_count = bookings.filter(
+            customer_id__in=new_customers
+        ).count()
+
+        repeated_customer_booking_count = bookings.filter(
+            customer_id__in=repeated_customers
+        ).count()
+
+        total_bookings = new_customer_booking_count + repeated_customer_booking_count
+
+        return Response(
+            {
+                "total_bookings": total_bookings,
+                "new_customer_booking_count": new_customer_booking_count,
+                "repeated_customer_booking_count": repeated_customer_booking_count,
+            }
+        )
+
+
+class TopEmployeeApiView(APIView):
+    permission_classes = [IsOwnerOrAdminOrStaff]
+
+    def get(self, request, salon_uid, *args, **kwargs):
+        account = request.account
+        salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+
+        bookings = Booking.objects.filter(
+            status=BookingStatus.COMPLETED,
+            salon=salon,
+            account=account,
+        )
+
+        # Get top 5 employees by calculating revenue
+        top_employees = (
+            Employee.objects.filter(employee_bookings__in=bookings)
+            .annotate(
+                # Count number of bookings this employee handled
+                booking_count=Count("employee_bookings", distinct=True),
+                # Calculate total revenue from bookings handled by this employee
+                total_revenue=Sum(
+                    F("employee_bookings__services__price")
+                    * (1 - F("employee_bookings__services__discount_percentage") / 100),
+                    output_field=DecimalField(max_digits=10, decimal_places=2),
+                ),
+            )
+            .order_by("-total_revenue")[:5]
+        )
+
+        return Response(
+            [
+                {
+                    "employee_id": employee.id,
+                    "name": employee.name,
+                    "designation": (
+                        employee.designation.name if employee.designation else ""
+                    ),
+                    "total_revenue": float(employee.total_revenue or Decimal("0.00")),
+                }
+                for employee in top_employees
+            ]
+        )
+
+
+class TopSellingServiceApiView(APIView):
+    permission_classes = [IsOwnerOrAdminOrStaff]
+
+    def get(self, request, salon_uid, *args, **kwargs):
+        account = request.account
+        salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+
+        period = request.query_params.get("period", "all_time")
+
+        # Calculate date range
+        now = timezone.now()
+        today = now.date()
+
+        if period == "this_week":
+            start_date = today - timedelta(days=today.weekday())
+            end_date = today
+        elif period == "last_week":
+            start_date = today - timedelta(days=today.weekday() + 7)
+            end_date = start_date + timedelta(days=6)
+        elif period == "this_month":
+            start_date = today.replace(day=1)
+            end_date = today
+        elif period == "all_time":
+            start_date = None
+            end_date = None
+        else:
+            return Response(
+                {
+                    "error": "Invalid period. Use: this_week, last_week, this_month, or all_time"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        bookings = Booking.objects.filter(
+            status=BookingStatus.COMPLETED,
+            salon=salon,
+            account=account,
+        )
+
+        if start_date and end_date:
+            bookings = bookings.filter(
+                booking_date__gte=start_date, booking_date__lte=end_date
+            )
+
+        # Get top 5 services by calculating revenue
+        top_services = (
+            Service.objects.filter(service_bookings__in=bookings)
+            .annotate(
+                # Count number of bookings this service appears in
+                booking_count=Count("service_bookings", distinct=True),
+                # Calculate total revenue (price * number of bookings)
+                total_revenue=Sum(
+                    F("price") * (1 - F("discount_percentage") / 100),
+                    output_field=DecimalField(max_digits=10, decimal_places=2),
+                ),
+            )
+            .order_by("-total_revenue")[:5]
+        )
+
+        return Response(
+            [
+                {
+                    "name": service.name,
+                    "description": service.description,
+                    "total_revenue": float(service.total_revenue or Decimal("0.00")),
+                }
+                for service in top_services
+            ]
+        )
+
+
+class TopSellingProductApiView(APIView):
+    permission_classes = [IsOwnerOrAdminOrStaff]
+
+    def get(self, request, salon_uid, *args, **kwargs):
+        account = request.account
+        salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+
+        period = request.query_params.get("period", "all_time")
+
+        # Calculate date range
+        now = timezone.now()
+        today = now.date()
+
+        if period == "this_week":
+            start_date = today - timedelta(days=today.weekday())  # Monday
+            end_date = today
+        elif period == "last_week":
+            start_date = today - timedelta(days=today.weekday() + 7)
+            end_date = start_date + timedelta(days=6)
+        elif period == "this_month":
+            start_date = today.replace(day=1)
+            end_date = today
+        elif period == "all_time":
+            start_date = None
+            end_date = None
+        else:
+            return Response(
+                {
+                    "error": "Invalid period. Use: this_week, last_week, this_month, or all_time"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        bookings = Booking.objects.filter(
+            status=BookingStatus.COMPLETED,
+            salon=salon,
+            account=account,
+        )
+
+        if start_date and end_date:
+            bookings = bookings.filter(
+                booking_date__gte=start_date, booking_date__lte=end_date
+            )
+
+        # Get top 5 products by calculating revenue
+        top_products = (
+            Product.objects.filter(product_bookings__in=bookings)
+            .annotate(
+                # Count number of bookings this product appears in
+                booking_count=Count("product_bookings", distinct=True),
+                # Calculate total revenue (price * number of bookings)
+                total_revenue=Sum(
+                    F("price"),
+                    output_field=DecimalField(max_digits=10, decimal_places=2),
+                ),
+            )
+            .order_by("-total_revenue")[:5]
+        )
+
+        return Response(
+            [
+                {
+                    "name": product.name,
+                    "description": product.description,
+                    "total_revenue": float(product.total_revenue or Decimal("0.00")),
+                }
+                for product in top_products
+            ]
         )

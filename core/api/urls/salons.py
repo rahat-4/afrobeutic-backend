@@ -25,9 +25,33 @@ from ..views.salons import (
     TopProductCategoryRevenueView,
     TopServicesRevenueView,
     TopProductsRevenueView,
+    CustomerAnalysisApiView,
+    TopEmployeeApiView,
+    TopSellingServiceApiView,
+    TopSellingProductApiView,
 )
 
 urlpatterns = [
+    path(
+        "/<uuid:salon_uid>/analytics/top-selling-products",
+        TopSellingProductApiView.as_view(),
+        name="top-selling-products",
+    ),
+    path(
+        "/<uuid:salon_uid>/analytics/top-selling-services",
+        TopSellingServiceApiView.as_view(),
+        name="top-selling-services",
+    ),
+    path(
+        "/<uuid:salon_uid>/analytics/top-employees",
+        TopEmployeeApiView.as_view(),
+        name="top-employees",
+    ),
+    path(
+        "/<uuid:salon_uid>/analytics/customer-analysis",
+        CustomerAnalysisApiView.as_view(),
+        name="customer-analysis",
+    ),
     path(
         "/<uuid:salon_uid>/analytics/product-revenue",
         TopProductsRevenueView.as_view(),
