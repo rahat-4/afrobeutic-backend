@@ -6,12 +6,6 @@ class AccountCategory(models.TextChoices):
     SALON_SHOP = "SALON_SHOP", "Salon Shop"
 
 
-class PlanType(models.TextChoices):
-    GOLD = "GOLD", "Gold Plan"
-    PLATINUM = "PLATINUM", "Platinum Plan"
-    CUSTOM = "CUSTOM", "Custom Plan"
-
-
 class SubscriptionStatus(models.TextChoices):
     TRIAL = "TRIAL", "Trial"
     ACTIVE = "ACTIVE", "Active"

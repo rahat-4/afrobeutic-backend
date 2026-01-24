@@ -36,6 +36,7 @@ from apps.salon.models import (
 )
 from apps.salon.choices import CustomerType, ChairStatus
 from apps.support.models import SupportTicket
+from apps.billing.models import PricingPlan, Subscription
 
 from ..serializers.admin import (
     AdminRegistrationSerializer,
@@ -49,7 +50,7 @@ from ..serializers.admin import (
     AdminBookingSerializer,
     AdminManagementSerializer,
     AdminAccountEnquirySerializer,
-    AdminSubscriptionPlanSerializer,
+    AdminPricingPlanSerializer,
 )
 
 User = get_user_model()
@@ -524,6 +525,30 @@ class AdminAccountEnquiryDetailView(RetrieveUpdateDestroyAPIView):
         return SupportTicket.objects.get(uid=uid, account__uid=account_uid)
 
 
-class AdminSubscriptionPlanListView(ListCreateAPIView):
-    serializer_class = AdminSubscriptionPlanSerializer
-    pass
+class AdminPricingPlanListView(ListCreateAPIView):
+    queryset = PricingPlan.objects.all()
+    serializer_class = AdminPricingPlanSerializer
+    permission_classes = [IsManagementAdminOrStaff]
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_fields = ["account_category", "is_active"]
+    search_fields = ["plan_type"]
+    ordering_fields = ["created_at", "price", "salon_count"]
+    ordering = ["-created_at"]
+
+
+class AdminPricingPlanDetailView(RetrieveUpdateDestroyAPIView):
+    serializer_class = AdminPricingPlanSerializer
+    permission_classes = [IsManagementAdminOrStaff]
+
+    def get_object(self):
+        uid = self.kwargs.get("pricing_plan_uid")
+
+        try:
+            pricing_plan = PricingPlan.objects.get(uid=uid)
+            return pricing_plan
+        except PricingPlan.DoesNotExist:
+            raise ValidationError("Pricing plan not found.")

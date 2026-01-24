@@ -18,14 +18,20 @@ from ..views.admin import (
     AdminBookingListView,
     AdminManagementListView,
     AdminManagementDetailView,
-    AdminSubscriptionPlanListView,
+    AdminPricingPlanListView,
+    AdminPricingPlanDetailView,
 )
 
 urlpatterns = [
     path(
-        "/subscription-plans",
-        AdminSubscriptionPlanListView.as_view(),
-        name="admin.subscription-plans",
+        "/pricing-plans/<uuid:pricing_plan_uid>",
+        AdminPricingPlanDetailView.as_view(),
+        name="admin.pricing-plan-detail",
+    ),
+    path(
+        "/pricing-plans",
+        AdminPricingPlanListView.as_view(),
+        name="admin.pricing-plans",
     ),
     path(
         "/accounts/<uuid:account_uid>/salons/<uuid:salon_uid>/bookings",

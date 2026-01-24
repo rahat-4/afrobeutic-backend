@@ -18,6 +18,7 @@ from common.serializers import (
 from apps.authentication.models import Account, AccountMembership
 from apps.salon.models import Salon, Service, Product, Employee, Booking, Customer
 from apps.support.models import SupportTicket
+from apps.billing.models import PricingPlan, Subscription
 
 User = get_user_model()
 
@@ -361,5 +362,19 @@ class AdminAccountEnquirySerializer(serializers.ModelSerializer):
         ]
 
 
-class AdminSubscriptionPlanSerializer(serializers.Serializer):
-    pass
+class AdminPricingPlanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PricingPlan
+        fields = [
+            "uid",
+            "account_category",
+            "plan_type",
+            "price",
+            "salon_count",
+            "whatsapp_chatbot_count",
+            "whatsapp_messages_limit",
+            "has_broadcasting",
+            "broadcasting_message_limit",
+            "is_active",
+            "description",
+        ]

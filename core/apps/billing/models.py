@@ -9,7 +9,6 @@ from apps.authentication.models import Account
 
 from .choices import (
     AccountCategory,
-    PlanType,
     SubscriptionStatus,
     PaymentTransactionStatus,
 )
@@ -18,7 +17,7 @@ from .choices import (
 # Create your models here.
 class PricingPlan(BaseModel):
     account_category = models.CharField(max_length=50, choices=AccountCategory.choices)
-    plan_type = models.CharField(max_length=20, choices=PlanType.choices)
+    plan_type = models.CharField(max_length=255)
     price = models.DecimalField(
         max_digits=10, decimal_places=2, help_text="Monthly price in USD"
     )
@@ -106,35 +105,35 @@ class Subscription(BaseModel):
             return timezone.now() < self.end_date
         return False
 
-    def get_salon_limit(self):
-        """Get salon limit based on plan or custom settings"""
-        if self.pricing_plan.plan_type == PlanType.CUSTOM and self.custom_salon_count:
-            return self.custom_salon_count
-        return self.pricing_plan.salon_count
+    # def get_salon_limit(self):
+    #     """Get salon limit based on plan or custom settings"""
+    #     if self.pricing_plan.plan_type == PlanType.CUSTOM and self.custom_salon_count:
+    #         return self.custom_salon_count
+    #     return self.pricing_plan.salon_count
 
-    def get_chatbot_limit(self):
-        """Get chatbot limit based on plan or custom settings"""
-        if self.pricing_plan.plan_type == PlanType.CUSTOM and self.custom_chatbot_count:
-            return self.custom_chatbot_count
-        return self.pricing_plan.whatsapp_chatbot_count
+    # def get_chatbot_limit(self):
+    #     """Get chatbot limit based on plan or custom settings"""
+    #     if self.pricing_plan.plan_type == PlanType.CUSTOM and self.custom_chatbot_count:
+    #         return self.custom_chatbot_count
+    #     return self.pricing_plan.whatsapp_chatbot_count
 
-    def get_messages_limit(self):
-        """Get messages limit based on plan or custom settings"""
-        if (
-            self.pricing_plan.plan_type == PlanType.CUSTOM
-            and self.custom_messages_limit
-        ):
-            return self.custom_messages_limit
-        return self.pricing_plan.whatsapp_messages_limit
+    # def get_messages_limit(self):
+    #     """Get messages limit based on plan or custom settings"""
+    #     if (
+    #         self.pricing_plan.plan_type == PlanType.CUSTOM
+    #         and self.custom_messages_limit
+    #     ):
+    #         return self.custom_messages_limit
+    #     return self.pricing_plan.whatsapp_messages_limit
 
-    def get_broadcasting_limit(self):
-        """Get broadcasting limit based on plan or custom settings"""
-        if (
-            self.pricing_plan.plan_type == PlanType.CUSTOM
-            and self.custom_broadcasting_limit
-        ):
-            return self.custom_broadcasting_limit
-        return self.pricing_plan.broadcasting_message_limit
+    # def get_broadcasting_limit(self):
+    #     """Get broadcasting limit based on plan or custom settings"""
+    #     if (
+    #         self.pricing_plan.plan_type == PlanType.CUSTOM
+    #         and self.custom_broadcasting_limit
+    #     ):
+    #         return self.custom_broadcasting_limit
+    #     return self.pricing_plan.broadcasting_message_limit
 
     def start_trial(self):
         """Initialize trial subscription"""
