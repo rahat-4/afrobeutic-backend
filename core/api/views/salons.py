@@ -1,8 +1,10 @@
+from calendar import monthrange
 from datetime import datetime
 from datetime import timedelta
 from decimal import Decimal
 
 from django.db.models import Prefetch, Count, Sum, F, DecimalField, Q
+from django.db.models.functions import ExtractWeekDay, ExtractHour
 from django.http import FileResponse
 from django.utils import timezone
 
@@ -728,247 +730,412 @@ class BaseRevenueAnalyticsView(generics.GenericAPIView):
             start_date = today - timedelta(days=365)
             end_date = today
         else:
-            # Default to this month
-            start_date = today.replace(day=1)
-            end_date = today
+            start_date = None
+            end_date = None
 
         return start_date, end_date
 
     def get_completed_bookings_queryset(self, start_date, end_date):
-        """Get completed bookings within date range"""
-
         salon_uid = self.kwargs.get("salon_uid")
         salon = get_object_or_404(Salon, uid=salon_uid, account=self.request.account)
 
-        return Booking.objects.filter(
+        qs = Booking.objects.filter(
             status=BookingStatus.COMPLETED,
-            booking_date__gte=start_date,
-            booking_date__lte=end_date,
             salon=salon,
             account=self.request.account,
         )
 
+        if start_date and end_date:
+            qs = qs.filter(
+                booking_date__gte=start_date,
+                booking_date__lte=end_date,
+            )
+
+        return qs
+
 
 class TopServiceCategoryRevenueView(BaseRevenueAnalyticsView):
-    """
-    GET /api/analytics/revenue/service-categories/?period=this_week
-    Returns top 5 service categories by revenue
-    """
-
     def get(self, request, *args, **kwargs):
-        period = request.query_params.get("period", "this_month")
+        period = request.query_params.get("period", "all_time")
         start_date, end_date = self.get_date_range(period)
 
         bookings = self.get_completed_bookings_queryset(start_date, end_date)
 
-        # Calculate revenue per service category
         category_revenue = (
-            bookings.values("services__category__uid", "services__category__name")
+            bookings.values("services__category__name")
             .annotate(
-                total_revenue=Sum(
+                revenue=Sum(
                     F("services__price")
                     * (1 - F("services__discount_percentage") / 100),
                     output_field=DecimalField(max_digits=12, decimal_places=2),
                 )
             )
-            .filter(total_revenue__gt=0)
-            .order_by("-total_revenue")[:5]
+            .filter(revenue__gt=0)
+            .order_by("-revenue")[:5]
         )
 
-        # Format response for pie chart
-        data = []
-        total = Decimal("0.00")
-
-        for item in category_revenue:
-            revenue = item["total_revenue"] or Decimal("0.00")
-            total += revenue
-            data.append(
-                {
-                    "category_uid": item["services__category__uid"],
-                    "category_name": item["services__category__name"],
-                    "revenue": float(revenue),
-                }
-            )
-
-        # Add percentages
-        for item in data:
-            item["percentage"] = (
-                round((Decimal(str(item["revenue"])) / total * 100), 2)
-                if total > 0
-                else 0
-            )
-
-        return Response(
+        data = [
             {
-                "period": period,
-                "start_date": start_date,
-                "end_date": end_date,
-                "total_revenue": float(total),
-                "data": data,
+                "service_category": item["services__category__name"],
+                "revenue": float(item["revenue"]),
             }
-        )
+            for item in category_revenue
+        ]
+
+        return Response(data)
 
 
 class TopProductCategoryRevenueView(BaseRevenueAnalyticsView):
     """
+    GET /api/analytics/revenue/product-categories/
     GET /api/analytics/revenue/product-categories/?period=this_month
     Returns top 5 product categories by revenue
     """
 
     def get(self, request, *args, **kwargs):
-        period = request.query_params.get("period", "this_month")
+        period = request.query_params.get("period", "all_time")
         start_date, end_date = self.get_date_range(period)
 
         bookings = self.get_completed_bookings_queryset(start_date, end_date)
 
-        # Calculate revenue per product category
         category_revenue = (
-            bookings.values("products__category__uid", "products__category__name")
+            bookings.values("products__category__name")
             .annotate(
-                total_revenue=Sum(
+                revenue=Sum(
                     "products__price",
                     output_field=DecimalField(max_digits=12, decimal_places=2),
                 )
             )
-            .filter(total_revenue__gt=0)
-            .order_by("-total_revenue")[:5]
+            .filter(revenue__gt=0)
+            .order_by("-revenue")[:5]
         )
 
-        # Format response for pie chart
-        data = []
-        total = Decimal("0.00")
-
-        for item in category_revenue:
-            revenue = item["total_revenue"] or Decimal("0.00")
-            total += revenue
-            data.append(
-                {
-                    "category_uid": item["products__category__uid"],
-                    "category_name": item["products__category__name"],
-                    "revenue": float(revenue),
-                }
-            )
-
-        # Add percentages
-        for item in data:
-            item["percentage"] = (
-                round((Decimal(str(item["revenue"])) / total * 100), 2)
-                if total > 0
-                else 0
-            )
-
-        return Response(
+        data = [
             {
-                "period": period,
-                "start_date": start_date,
-                "end_date": end_date,
-                "total_revenue": float(total),
-                "data": data,
+                "product_category": item["products__category__name"],
+                "revenue": float(item["revenue"]),
             }
-        )
+            for item in category_revenue
+        ]
+
+        return Response(data)
 
 
 class TopServicesRevenueView(BaseRevenueAnalyticsView):
     """
+    GET /api/analytics/revenue/services/
     GET /api/analytics/revenue/services/?period=last_6_months
-    Returns top 5 individual services by revenue (Line chart data)
+    Returns top 5 individual services by revenue
     """
 
     def get(self, request, *args, **kwargs):
-        period = request.query_params.get("period", "this_month")
+        period = request.query_params.get("period", "all_time")
         start_date, end_date = self.get_date_range(period)
 
         bookings = self.get_completed_bookings_queryset(start_date, end_date)
 
-        # Calculate revenue per service
         service_revenue = (
-            bookings.values(
-                "services__uid", "services__name", "services__category__name"
-            )
+            bookings.values("services__name")
             .annotate(
-                total_revenue=Sum(
+                revenue=Sum(
                     F("services__price")
                     * (1 - F("services__discount_percentage") / 100),
                     output_field=DecimalField(max_digits=12, decimal_places=2),
-                ),
-                booking_count=Count("id"),
+                )
             )
-            .filter(total_revenue__gt=0)
-            .order_by("-total_revenue")[:5]
+            .filter(revenue__gt=0)
+            .order_by("-revenue")[:5]
         )
 
-        # Format response for line chart
-        data = []
-        for item in service_revenue:
-            data.append(
-                {
-                    "service_uid": item["services__uid"],
-                    "service_name": item["services__name"],
-                    "category_name": item["services__category__name"],
-                    "revenue": float(item["total_revenue"] or Decimal("0.00")),
-                    "booking_count": item["booking_count"],
-                }
-            )
-
-        return Response(
+        data = [
             {
-                "period": period,
-                "start_date": start_date,
-                "end_date": end_date,
-                "data": data,
+                "service_name": item["services__name"],
+                "revenue": float(item["revenue"]),
             }
-        )
+            for item in service_revenue
+        ]
+
+        return Response(data)
 
 
 class TopProductsRevenueView(BaseRevenueAnalyticsView):
     """
+    GET /api/analytics/revenue/products/
     GET /api/analytics/revenue/products/?period=last_year
-    Returns top 5 individual products by revenue (Line chart data)
+    Returns top 5 individual products by revenue
     """
 
     def get(self, request, *args, **kwargs):
-        period = request.query_params.get("period", "this_month")
+        period = request.query_params.get("period", "all_time")
         start_date, end_date = self.get_date_range(period)
 
         bookings = self.get_completed_bookings_queryset(start_date, end_date)
 
-        # Calculate revenue per product
         product_revenue = (
-            bookings.values(
-                "products__uid", "products__name", "products__category__name"
-            )
+            bookings.values("products__name")
             .annotate(
-                total_revenue=Sum(
+                revenue=Sum(
                     "products__price",
                     output_field=DecimalField(max_digits=12, decimal_places=2),
-                ),
-                booking_count=Count("id"),
+                )
             )
-            .filter(total_revenue__gt=0)
-            .order_by("-total_revenue")[:5]
+            .filter(revenue__gt=0)
+            .order_by("-revenue")[:5]
         )
 
-        # Format response for line chart
-        data = []
-        for item in product_revenue:
-            data.append(
-                {
-                    "product_uid": item["products__uid"],
-                    "product_name": item["products__name"],
-                    "category_name": item["products__category__name"],
-                    "revenue": float(item["total_revenue"] or Decimal("0.00")),
-                    "booking_count": item["booking_count"],
-                }
-            )
-
-        return Response(
+        data = [
             {
-                "period": period,
-                "start_date": start_date,
-                "end_date": end_date,
-                "data": data,
+                "product_name": item["products__name"],
+                "revenue": float(item["revenue"]),
             }
+            for item in product_revenue
+        ]
+
+        return Response(data)
+
+
+class BookingsByMonthView(APIView):
+    permission_classes = [IsOwnerOrAdminOrStaff]
+
+    def get(self, request, salon_uid):
+        # Get query parameters
+
+        account = request.account
+        salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+
+        month = request.query_params.get("month")
+        year = request.query_params.get("year")
+
+        if not month or not year:
+            return Response(
+                {"error": "Both 'month' and 'year' query parameters are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            month = int(month)
+            year = int(year)
+
+            if month < 1 or month > 12:
+                raise ValueError("Month must be between 1 and 12")
+
+            if year < 2000 or year > 2100:
+                raise ValueError("Year must be between 2000 and 2100")
+
+        except ValueError as e:
+            return Response(
+                {"error": f"Invalid month or year: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get the number of days in the selected month
+        _, days_in_month = monthrange(year, month)
+
+        # Build query filters
+        filters = Q(
+            account=account,
+            salon=salon,
+            status=BookingStatus.COMPLETED,
+            booking_date__year=year,
+            booking_date__month=month,
         )
+
+        # Query completed bookings for the selected month
+        bookings = (
+            Booking.objects.filter(filters)
+            .values("booking_date")
+            .annotate(count=Count("id"))
+            .order_by("booking_date")
+        )
+
+        # Initialize all dates with 0 bookings
+        bookings_by_date = {day: 0 for day in range(1, days_in_month + 1)}
+
+        # Fill in actual booking counts
+        for booking in bookings:
+            day = booking["booking_date"].day
+            bookings_by_date[day] = booking["count"]
+
+        # Get month name
+        month_name = datetime(year, month, 1).strftime("%B")
+
+        # Format response as dictionary with day as key and count as value
+        response_data = {
+            str(day): bookings_by_date[day] for day in range(1, days_in_month + 1)
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
+
+class PeakHoursAnalyticsView(APIView):
+    permission_classes = [IsOwnerOrAdminOrStaff]
+
+    def get(self, request, salon_uid):
+        account = request.account
+        salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+
+        filter_type = request.query_params.get("filter", "all_time")
+
+        # Validate filter type
+        valid_filters = ["today", "last_7_days", "all_time"]
+        if filter_type not in valid_filters:
+            return Response(
+                {"error": f"Invalid filter. Use one of: {', '.join(valid_filters)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Define date filters
+        today = datetime.now().date()
+
+        if filter_type == "today":
+            date_filter = Q(booking_date=today)
+        elif filter_type == "last_7_days":
+            date_filter = Q(booking_date__gte=today - timedelta(days=7))
+        else:  # all_time
+            date_filter = Q()
+
+        # Build query filters
+        filters = (
+            Q(account=account, salon=salon, status=BookingStatus.COMPLETED)
+            & date_filter
+        )
+
+        # Query completed bookings and extract hour
+        bookings = (
+            Booking.objects.filter(filters)
+            .annotate(hour=ExtractHour("booking_time"))
+            .values("hour")
+            .annotate(count=Count("id"))
+            .order_by("hour")
+        )
+
+        # Define 2-hour ranges for typical salon hours (9 AM - 9 PM)
+        hour_ranges = {
+            "09:00-11:00": 0,
+            "11:00-13:00": 0,
+            "13:00-15:00": 0,
+            "15:00-17:00": 0,
+            "17:00-19:00": 0,
+            "19:00-21:00": 0,
+        }
+
+        # Map hours to ranges
+        for booking in bookings:
+            hour = booking["hour"]
+            count = booking["count"]
+
+            if 9 <= hour < 11:
+                hour_ranges["09:00-11:00"] += count
+            elif 11 <= hour < 13:
+                hour_ranges["11:00-13:00"] += count
+            elif 13 <= hour < 15:
+                hour_ranges["13:00-15:00"] += count
+            elif 15 <= hour < 17:
+                hour_ranges["15:00-17:00"] += count
+            elif 17 <= hour < 19:
+                hour_ranges["17:00-19:00"] += count
+            elif 19 <= hour < 21:
+                hour_ranges["19:00-21:00"] += count
+
+        return Response(hour_ranges, status=status.HTTP_200_OK)
+
+
+class PeakDaysAnalyticsView(APIView):
+    permission_classes = [IsOwnerOrAdminOrStaff]
+
+    def get(self, request, salon_uid):
+        account = request.account
+        salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+
+        filter_type = request.query_params.get("filter", "this_week")
+
+        # Validate filter type
+        valid_filters = ["this_week", "last_week", "all_time"]
+        if filter_type not in valid_filters:
+            return Response(
+                {"error": f"Invalid filter. Use one of: {', '.join(valid_filters)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Define date filters
+        today = datetime.now().date()
+
+        # Get the start of this week (Monday)
+        days_since_monday = today.weekday()
+        this_week_start = today - timedelta(days=days_since_monday)
+        this_week_end = this_week_start + timedelta(days=6)
+
+        if filter_type == "this_week":
+            date_filter = Q(
+                booking_date__gte=this_week_start, booking_date__lte=this_week_end
+            )
+        elif filter_type == "last_week":
+            last_week_start = this_week_start - timedelta(days=7)
+            last_week_end = this_week_start - timedelta(days=1)
+            date_filter = Q(
+                booking_date__gte=last_week_start, booking_date__lte=last_week_end
+            )
+        else:  # all_time
+            date_filter = Q()
+
+        # Build query filters
+        filters = (
+            Q(account=account, salon=salon, status=BookingStatus.COMPLETED)
+            & date_filter
+        )
+
+        # Query completed bookings and extract weekday
+        bookings = (
+            Booking.objects.filter(filters)
+            .annotate(weekday=ExtractWeekDay("booking_date"))
+            .values("weekday")
+            .annotate(count=Count("id"))
+            .order_by("weekday")
+        )
+
+        # Map weekday numbers to names
+        # ExtractWeekDay: Sunday=1, Monday=2, Tuesday=3, ..., Saturday=7
+        weekday_mapping = {
+            2: "Monday",
+            3: "Tuesday",
+            4: "Wednesday",
+            5: "Thursday",
+            6: "Friday",
+            7: "Saturday",
+            1: "Sunday",
+        }
+
+        # Initialize all days with 0
+        days_data = {
+            "Monday": 0,
+            "Tuesday": 0,
+            "Wednesday": 0,
+            "Thursday": 0,
+            "Friday": 0,
+            "Saturday": 0,
+            "Sunday": 0,
+        }
+
+        # Fill in actual booking counts
+        for booking in bookings:
+            day_name = weekday_mapping[booking["weekday"]]
+            days_data[day_name] = booking["count"]
+
+        # Maintain Monday-Sunday order
+        ordered_days = [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday",
+        ]
+
+        # Format response for bar chart
+        response_data = {day: days_data[day] for day in ordered_days}
+
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 class CustomerAnalysisApiView(APIView):

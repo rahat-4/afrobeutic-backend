@@ -25,6 +25,9 @@ from ..views.salons import (
     TopProductCategoryRevenueView,
     TopServicesRevenueView,
     TopProductsRevenueView,
+    BookingsByMonthView,
+    PeakHoursAnalyticsView,
+    PeakDaysAnalyticsView,
     CustomerAnalysisApiView,
     TopEmployeeApiView,
     TopSellingServiceApiView,
@@ -51,6 +54,21 @@ urlpatterns = [
         "/<uuid:salon_uid>/analytics/customer-analysis",
         CustomerAnalysisApiView.as_view(),
         name="customer-analysis",
+    ),
+    path(
+        "/<uuid:salon_uid>/analytics/bookings-peak-hours",
+        PeakHoursAnalyticsView.as_view(),
+        name="bookings-peak-hours",
+    ),
+    path(
+        "/<uuid:salon_uid>/analytics/bookings-peak-days",
+        PeakDaysAnalyticsView.as_view(),
+        name="bookings-peak-days",
+    ),
+    path(
+        "/<uuid:salon_uid>/analytics/bookings-by-month",
+        BookingsByMonthView.as_view(),
+        name="bookings-by-month",
     ),
     path(
         "/<uuid:salon_uid>/analytics/product-revenue",
