@@ -5,9 +5,15 @@ from ..views.accounts import (
     AccountMemberListView,
     AccountInvitationView,
     AccountAccessListView,
+    AccountSubscriptionDetailView
 )
 
 urlpatterns = [
+    path(
+        "/subscriptions",
+        AccountSubscriptionDetailView.as_view(),
+        name="account.subscription-detail",
+    ),
     path("/access", AccountAccessListView.as_view(), name="member-account.list"),
     path(
         "/invite",

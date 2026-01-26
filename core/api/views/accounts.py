@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from rest_framework import status
-from rest_framework.generics import ListAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
@@ -74,3 +74,7 @@ class AccountAccessListView(ListAPIView):
     def get_queryset(self):
         user = self.request.user
         return Account.objects.filter(members__user=user)
+
+
+class AccountSubscriptionDetailView(RetrieveUpdateAPIView):
+    pass

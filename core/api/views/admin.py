@@ -51,6 +51,8 @@ from ..serializers.admin import (
     AdminManagementSerializer,
     AdminAccountEnquirySerializer,
     AdminPricingPlanSerializer,
+    AdminSubscriptionGetSerializer,
+    AdminSubscriptionPostSerializer
 )
 
 User = get_user_model()
@@ -535,8 +537,8 @@ class AdminPricingPlanListView(ListCreateAPIView):
         filters.OrderingFilter,
     ]
     filterset_fields = ["account_category", "is_active"]
-    search_fields = ["plan_type"]
-    ordering_fields = ["created_at", "price", "salon_count"]
+    search_fields = ["name"]
+    ordering_fields = ["created_at", "price", "salon_limit"]
     ordering = ["-created_at"]
 
 
@@ -552,3 +554,44 @@ class AdminPricingPlanDetailView(RetrieveUpdateDestroyAPIView):
             return pricing_plan
         except PricingPlan.DoesNotExist:
             raise ValidationError("Pricing plan not found.")
+
+
+class AdminSubscriptionListView(ListCreateAPIView):
+    queryset = Subscription.objects.all()
+    permission_classes = [IsManagementAdminOrStaff]
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_fields = ["status", "auto_renew"]
+    search_fields = [
+        "account__owner__first_name",
+        "account__owner__last_name",
+        "account__owner__email",
+        "pricing_plan__name",
+    ]
+    ordering_fields = ["created_at", "start_date", "end_date", "next_billing_date"]
+    ordering = ["-created_at"]
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return AdminSubscriptionPostSerializer
+        return AdminSubscriptionGetSerializer
+
+class AdminSubscriptionDetailView(RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsManagementAdminOrStaff]
+
+    def get_serializer_class(self):
+        if self.request.method in ["PUT", "PATCH"]:
+            return AdminSubscriptionPostSerializer
+        return AdminSubscriptionGetSerializer
+
+    def get_object(self):
+        uid = self.kwargs.get("subscription_uid")
+
+        try:
+            subscription = Subscription.objects.get(uid=uid)
+            return subscription
+        except Subscription.DoesNotExist:
+            raise ValidationError("Subscription not found.")

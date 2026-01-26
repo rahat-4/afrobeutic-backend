@@ -2,6 +2,8 @@ from datetime import timedelta
 
 from django.db import models
 from django.utils import timezone
+from django.db.models import UniqueConstraint
+from django.db.models.functions import Lower
 
 from common.models import BaseModel
 
@@ -17,26 +19,32 @@ from .choices import (
 # Create your models here.
 class PricingPlan(BaseModel):
     account_category = models.CharField(max_length=50, choices=AccountCategory.choices)
-    plan_type = models.CharField(max_length=255)
+    name = models.CharField(max_length=255)
     price = models.DecimalField(
         max_digits=10, decimal_places=2, help_text="Monthly price in USD"
     )
-    salon_count = models.IntegerField(default=1)
-    whatsapp_chatbot_count = models.IntegerField(default=0)
-    whatsapp_messages_limit = models.IntegerField(
-        default=0, help_text="Messages per chatbot"
+    salon_limit = models.PositiveIntegerField(default=1)
+    whatsapp_chatbot_limit = models.PositiveIntegerField(default=0)
+    whatsapp_messages_per_chatbot = models.PositiveIntegerField(
+        default=0
     )
     has_broadcasting = models.BooleanField(default=False)
-    broadcasting_message_limit = models.IntegerField(default=0)
+    broadcasting_message_limit = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
     description = models.TextField(blank=True, null=True)
 
     class Meta:
-        unique_together = ["account_category", "plan_type"]
-        ordering = ["account_category", "price"]
+            ordering = ["account_category", "price"]
+            constraints = [
+                UniqueConstraint(
+                    Lower("name"),
+                    "account_category",
+                    name="unique_pricing_plan_name_per_category_ci",
+                )
+            ]
 
     def __str__(self):
-        return f"{self.get_account_category_display()} - {self.get_plan_type_display()}"
+        return f"{self.get_account_category_display()}"
 
 
 class Subscription(BaseModel):
@@ -46,43 +54,23 @@ class Subscription(BaseModel):
         default=SubscriptionStatus.TRIAL,
     )
 
-    # Trial information
-    trial_start_date = models.DateTimeField(null=True, blank=True)
-    trial_end_date = models.DateTimeField(null=True, blank=True)
-
     # Subscription dates
     start_date = models.DateTimeField(null=True, blank=True)
     end_date = models.DateTimeField(null=True, blank=True)
     next_billing_date = models.DateTimeField(null=True, blank=True)
 
-    # Custom plan pricing (for custom plans only)
-    custom_price = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
-    )
-    custom_salon_count = models.IntegerField(null=True, blank=True)
-    custom_chatbot_count = models.IntegerField(null=True, blank=True)
-    custom_messages_limit = models.IntegerField(null=True, blank=True)
-    custom_broadcasting_limit = models.IntegerField(null=True, blank=True)
-
-    # Usage tracking
-    salons_created = models.IntegerField(default=0)
-    chatbots_created = models.IntegerField(default=0)
-    messages_used = models.IntegerField(default=0)
-    broadcasts_sent = models.IntegerField(default=0)
-
     # Auto-renewal
     auto_renew = models.BooleanField(default=True)
-
-    # Metadata
-    notes = models.TextField(blank=True, null=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
 
+    notes = models.TextField(blank=True, null=True)
+
     # Fk
-    account = models.ForeignKey(
-        Account, on_delete=models.CASCADE, related_name="account_subscriptions"
-    )
     pricing_plan = models.ForeignKey(
         PricingPlan, on_delete=models.PROTECT, related_name="pricing_plan_subscriptions"
+    )
+    account = models.OneToOneField(
+        Account, on_delete=models.CASCADE, related_name="account_subscriptions"
     )
 
     class Meta:
@@ -91,64 +79,36 @@ class Subscription(BaseModel):
     def __str__(self):
         return f"{self.account.user.username} - {self.pricing_plan}"
 
-    def is_trial_active(self):
-        """Check if trial is still active"""
-        if self.status == SubscriptionStatus.TRIAL and self.trial_end_date:
-            return timezone.now() < self.trial_end_date
-        return False
+    @property
+    def chatbot_limit(self):
+        return self.pricing_plan.whatsapp_chatbot_limit
 
-    def is_active(self):
-        """Check if subscription is active"""
-        if self.status == SubscriptionStatus.TRIAL:
-            return self.is_trial_active()
-        elif self.status == SubscriptionStatus.ACTIVE and self.end_date:
-            return timezone.now() < self.end_date
-        return False
+    @property
+    def messages_per_chatbot(self):
+        return self.pricing_plan.whatsapp_messages_per_chatbot
 
-    # def get_salon_limit(self):
-    #     """Get salon limit based on plan or custom settings"""
-    #     if self.pricing_plan.plan_type == PlanType.CUSTOM and self.custom_salon_count:
-    #         return self.custom_salon_count
-    #     return self.pricing_plan.salon_count
+class Chatbot(BaseModel):
+    name = models.CharField(max_length=100)
+    messages_sent = models.PositiveIntegerField(default=0)
 
-    # def get_chatbot_limit(self):
-    #     """Get chatbot limit based on plan or custom settings"""
-    #     if self.pricing_plan.plan_type == PlanType.CUSTOM and self.custom_chatbot_count:
-    #         return self.custom_chatbot_count
-    #     return self.pricing_plan.whatsapp_chatbot_count
+    is_active = models.BooleanField(default=True)
 
-    # def get_messages_limit(self):
-    #     """Get messages limit based on plan or custom settings"""
-    #     if (
-    #         self.pricing_plan.plan_type == PlanType.CUSTOM
-    #         and self.custom_messages_limit
-    #     ):
-    #         return self.custom_messages_limit
-    #     return self.pricing_plan.whatsapp_messages_limit
+    # Fk
+    subscription = models.ForeignKey(
+        Subscription, on_delete=models.CASCADE, related_name="subscription_chatbots"
+    )
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, related_name="account_chatbots"
+    )
 
-    # def get_broadcasting_limit(self):
-    #     """Get broadcasting limit based on plan or custom settings"""
-    #     if (
-    #         self.pricing_plan.plan_type == PlanType.CUSTOM
-    #         and self.custom_broadcasting_limit
-    #     ):
-    #         return self.custom_broadcasting_limit
-    #     return self.pricing_plan.broadcasting_message_limit
+    def __str__(self):
+        return f"{self.name} ({self.subscription.account.user.username})"
 
-    def start_trial(self):
-        """Initialize trial subscription"""
-        self.status = SubscriptionStatus.TRIAL
-        self.trial_start_date = timezone.now()
-        self.trial_end_date = timezone.now() + timedelta(days=30)
-        self.save()
+    def message_limit(self):
+        return self.subscription.messages_per_chatbot
 
-    def activate_paid_subscription(self):
-        """Convert from trial to paid subscription"""
-        self.status = SubscriptionStatus.ACTIVE
-        self.start_date = timezone.now()
-        self.end_date = timezone.now() + timedelta(days=30)
-        self.next_billing_date = self.end_date
-        self.save()
+    def has_remaining_messages(self):
+        return self.messages_sent < self.message_limit()
 
 
 class PaymentCard(BaseModel):
@@ -182,6 +142,9 @@ class PaymentTransaction(BaseModel):
     # Fk
     subscription = models.ForeignKey(
         Subscription, on_delete=models.CASCADE, related_name="transactions"
+    )
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, related_name="account_payment_transactions"
     )
 
     class Meta:

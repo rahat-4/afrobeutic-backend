@@ -974,7 +974,7 @@ class PeakHoursAnalyticsView(APIView):
         account = request.account
         salon = get_object_or_404(Salon, uid=salon_uid, account=account)
 
-        filter_type = request.query_params.get("filter", "all_time")
+        filter_type = request.query_params.get("period", "all_time")
 
         # Validate filter type
         valid_filters = ["today", "last_7_days", "all_time"]
@@ -1047,7 +1047,7 @@ class PeakDaysAnalyticsView(APIView):
         account = request.account
         salon = get_object_or_404(Salon, uid=salon_uid, account=account)
 
-        filter_type = request.query_params.get("filter", "this_week")
+        filter_type = request.query_params.get("period", "this_week")
 
         # Validate filter type
         valid_filters = ["this_week", "last_week", "all_time"]

@@ -20,9 +20,21 @@ from ..views.admin import (
     AdminManagementDetailView,
     AdminPricingPlanListView,
     AdminPricingPlanDetailView,
+    AdminSubscriptionListView,
+    AdminSubscriptionDetailView
 )
 
 urlpatterns = [
+    path(
+        "/subscriptions/<uuid:subscription_uid>",
+        AdminSubscriptionDetailView.as_view(),
+        name="admin.subscription-detail",
+    ),
+    path(
+        "/subscriptions",
+        AdminSubscriptionListView.as_view(),
+        name="admin.subscription-list",
+    ),
     path(
         "/pricing-plans/<uuid:pricing_plan_uid>",
         AdminPricingPlanDetailView.as_view(),
@@ -31,7 +43,7 @@ urlpatterns = [
     path(
         "/pricing-plans",
         AdminPricingPlanListView.as_view(),
-        name="admin.pricing-plans",
+        name="admin.pricing-plan-list",
     ),
     path(
         "/accounts/<uuid:account_uid>/salons/<uuid:salon_uid>/bookings",

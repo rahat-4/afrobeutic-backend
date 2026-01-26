@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from pytz import timezone
 
 from rest_framework import serializers
 
@@ -7,6 +8,8 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from apps.authentication.models import Account, AccountMembership, AccountInvitation
 from apps.authentication.choices import AccountMembershipRole
+from apps.billing.models import Subscription, PricingPlan
+from apps.billing.choices import SubscriptionStatus
 
 User = get_user_model()
 
@@ -68,6 +71,21 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
                 account=account,
                 role=AccountMembershipRole.OWNER,
                 is_owner=True,
+            )
+
+            # One month free trial setup
+            pricing_plan = PricingPlan.objects.filter(
+                account_category=account_type, name="Free"
+            ).first()
+
+            Subscription.objects.create(
+                status=SubscriptionStatus.ACTIVE,
+                start_date=timezone.now(),
+                end_date=timezone.now() + timezone.timedelta(days=30),
+                next_billing_date=timezone.now() + timezone.timedelta(days=30),
+                auto_renew=False,
+                pricing_plan=pricing_plan,
+                account=account,
             )
 
             return user

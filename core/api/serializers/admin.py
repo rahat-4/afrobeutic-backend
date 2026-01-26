@@ -13,6 +13,7 @@ from common.serializers import (
     ServiceSlimSerializer,
     ProductSlimSerializer,
     MediaSlimSerializer,
+    PricingPlanSlimSerializer
 )
 
 from apps.authentication.models import Account, AccountMembership
@@ -368,13 +369,82 @@ class AdminPricingPlanSerializer(serializers.ModelSerializer):
         fields = [
             "uid",
             "account_category",
-            "plan_type",
+            "name",
             "price",
-            "salon_count",
-            "whatsapp_chatbot_count",
-            "whatsapp_messages_limit",
+            "salon_limit",
+            "whatsapp_chatbot_limit",
+            "whatsapp_messages_per_chatbot",
             "has_broadcasting",
             "broadcasting_message_limit",
             "is_active",
             "description",
+        ]
+    
+    def validate_name(self, value):
+        """
+        - Normalize name (strip + title)
+        - Case-insensitive uniqueness
+        - Safe for both create & update
+        """
+        normalized_value = value.strip().title()
+
+        qs = PricingPlan.objects.filter(
+            name__iexact=normalized_value
+        )
+
+        # Exclude current instance on update
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        if qs.exists():
+            raise serializers.ValidationError(
+                "A pricing plan with this name already exists."
+            )
+
+        return normalized_value
+
+class AdminSubscriptionGetSerializer(serializers.ModelSerializer):
+    pricing_plan = PricingPlanSlimSerializer(read_only=True)
+    account = AccountSlimSerializer(read_only=True)
+
+    class Meta:
+        model = Subscription
+        fields = [
+            "uid",
+            "status",
+            "start_date",
+            "end_date",
+            "next_billing_date",
+            "auto_renew",
+            "cancelled_at",
+            "notes",
+            "pricing_plan",
+            "account",
+            "created_at",
+        ]
+
+class AdminSubscriptionPostSerializer(serializers.ModelSerializer):
+    account = serializers.SlugRelatedField(
+        slug_field="uid",
+        queryset=Account.objects.all(),
+    )
+    pricing_plan = serializers.SlugRelatedField(
+        slug_field="uid",
+        queryset=PricingPlan.objects.all(),
+    )
+
+    class Meta:
+        model = Subscription
+        fields = [
+            "uid",
+            "status",
+            "start_date",
+            "end_date",
+            "next_billing_date",
+            "auto_renew",
+            "cancelled_at",
+            "notes",
+            "pricing_plan",
+            "account",
+            "created_at",
         ]

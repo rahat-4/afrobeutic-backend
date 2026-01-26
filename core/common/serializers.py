@@ -16,6 +16,7 @@ from apps.salon.models import (
     ProductCategory,
     ProductSubCategory,
 )
+from apps.billing.models import PricingPlan
 
 from .models import Media
 
@@ -223,3 +224,21 @@ class ProductCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductCategory
         fields = ["uid", "name"]
+
+class PricingPlanSlimSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PricingPlan
+        fields = [
+            "uid",
+            "account_category",
+            "name",
+            "price",
+            "salon_limit",
+            "whatsapp_chatbot_limit",
+            "whatsapp_messages_per_chatbot",
+            "has_broadcasting",
+            "broadcasting_message_limit",
+            "is_active",
+            "description",
+        ]
+    
