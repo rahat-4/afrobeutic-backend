@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from apps.authentication.models import Account, AccountMembership
+from apps.billing.models import Subscription, PricingPlan
 
 from apps.authentication.emails import send_account_invitation_email
 
@@ -18,6 +19,7 @@ from ..serializers.accounts import (
     AccountAccessSerializer,
     AccountInvitationSerializer,
     AccountMemberSerializer,
+    AccountSubscriptionSerializer
 )
 
 
@@ -77,4 +79,12 @@ class AccountAccessListView(ListAPIView):
 
 
 class AccountSubscriptionDetailView(RetrieveUpdateAPIView):
-    pass
+    serializer_class = AccountSubscriptionSerializer
+    permission_classes = [IsOwnerOrAdmin]
+
+    def get_object(self):
+        account = self.request.account
+        try:
+            return account.account_subscription
+        except Subscription.DoesNotExist:
+            return None

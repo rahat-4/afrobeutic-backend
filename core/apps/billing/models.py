@@ -70,7 +70,7 @@ class Subscription(BaseModel):
         PricingPlan, on_delete=models.PROTECT, related_name="pricing_plan_subscriptions"
     )
     account = models.OneToOneField(
-        Account, on_delete=models.CASCADE, related_name="account_subscriptions"
+        Account, on_delete=models.CASCADE, related_name="account_subscription"
     )
 
     class Meta:

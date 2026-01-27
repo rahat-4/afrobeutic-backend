@@ -68,6 +68,13 @@ class Account(BaseModel):
     owner = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="created_accounts"
     )
+    # stripe
+    stripe_customer_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Stripe Customer ID associated with this account",
+    )
 
     def __str__(self):
         return f"UID: {self.uid} account: {self.name} owned by {self.owner.email}"

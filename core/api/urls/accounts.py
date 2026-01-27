@@ -10,7 +10,7 @@ from ..views.accounts import (
 
 urlpatterns = [
     path(
-        "/subscriptions",
+        "/subscription",
         AccountSubscriptionDetailView.as_view(),
         name="account.subscription-detail",
     ),
