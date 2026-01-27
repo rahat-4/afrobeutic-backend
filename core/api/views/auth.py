@@ -20,6 +20,9 @@ from apps.authentication.emails import (
     send_verification_email,
 )
 
+from apps.billing.models import Subscription
+from apps.billing.choices import SubscriptionStatus
+
 from common.throttles import RoleBasedLoginThrottle
 from common.utils import email_token_generator
 
@@ -72,6 +75,10 @@ class VerifyEmailView(APIView):
         if email_token_generator.check_token(user, token):
             user.is_active = True
             user.save()
+            
+            Subscription.objects.filter(account__owner=user, status=SubscriptionStatus.PENDING).update(
+                status=SubscriptionStatus.TRIAL)
+            
             return HttpResponseRedirect(f"{settings.FRONTEND_URL}/auth/login")
         else:
             params = urlencode({"error": "expired_or_invalid"})

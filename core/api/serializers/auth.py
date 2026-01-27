@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from pytz import timezone
+from django.utils import timezone
 
 from rest_framework import serializers
 
@@ -79,7 +79,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             ).first()
 
             Subscription.objects.create(
-                status=SubscriptionStatus.ACTIVE,
+                status=SubscriptionStatus.PENDING,
                 start_date=timezone.now(),
                 end_date=timezone.now() + timezone.timedelta(days=30),
                 next_billing_date=timezone.now() + timezone.timedelta(days=30),

@@ -7,6 +7,7 @@ class AccountCategory(models.TextChoices):
 
 
 class SubscriptionStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
     TRIAL = "TRIAL", "Trial"
     ACTIVE = "ACTIVE", "Active"
     EXPIRED = "EXPIRED", "Expired"
