@@ -1435,3 +1435,4 @@ class TopSellingProductApiView(APIView):
                 for product in top_products
             ]
         )
+

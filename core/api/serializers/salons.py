@@ -91,6 +91,8 @@ class SalonSerializer(serializers.ModelSerializer):
             "instagram",
             "youtube",
             "status",
+            "about_salon",
+            "professional_career_details",
             "opening_hours",
             "created_at",
             "updated_at",

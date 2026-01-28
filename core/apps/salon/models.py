@@ -88,6 +88,10 @@ class Salon(BaseModel):
     instagram = models.URLField(blank=True, null=True)
     youtube = models.URLField(blank=True, null=True)
 
+    # Individual stylist
+    about_salon = models.TextField(blank=True, null=True)
+    professional_career_details = models.TextField(blank=True, null=True)
+
     status = models.CharField(
         max_length=10, choices=SalonStatus.choices, default=SalonStatus.ACTIVE
     )
