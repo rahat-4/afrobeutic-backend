@@ -19,9 +19,6 @@ def stripe_webhook(request):
     payload = request.body
     sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
 
-    print(f"Webhook payload size: {len(payload)} bytes")
-    print(f"Signature header present: {bool(sig_header)}")
-
     try:
         event = stripe.Webhook.construct_event(
             payload,

@@ -8,6 +8,8 @@ from apps.billing.models import (
     PricingPlan,
 )
 
+from common.serializers import PricingPlanSlimSerializer
+
 User = get_user_model()
 
 
@@ -80,6 +82,26 @@ class AccountSubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
         fields = [
+            "status",
+            "start_date",
+            "end_date",
+            "next_billing_date",
+            # "auto_renew",
+            "cancelled_at",
+            "notes",
             "pricing_plan",
             "payment_method_id",
         ]
+
+        read_only_fields = [
+            "status",
+            "start_date",
+            "end_date",
+            "next_billing_date",
+            "cancelled_at",
+        ]
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep["pricing_plan"] = PricingPlanSlimSerializer(instance.pricing_plan).data
+        return rep

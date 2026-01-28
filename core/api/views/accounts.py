@@ -92,7 +92,7 @@ class AccountAccessListView(ListAPIView):
 
 
 
-class AccountSubscriptionDetailView(UpdateAPIView):
+class AccountSubscriptionDetailView(RetrieveUpdateAPIView):
     serializer_class = AccountSubscriptionSerializer
     permission_classes = [IsOwnerOrAdmin]
 
@@ -110,13 +110,11 @@ class AccountSubscriptionDetailView(UpdateAPIView):
 
         attach_payment_method(customer_id, payment_method_id)
 
-        print(f"================= Creating PaymentIntent for customer {customer_id} =================")
         intent = charge_customer(
             customer_id,
             payment_method_id,
             pricing_plan.price,
         )
-        print(f"================= PaymentIntent created: {intent.id}, status: {intent.status} =================")
 
         # Save transaction (PENDING, webhook will finalize)
         PaymentTransaction.objects.create(
@@ -133,4 +131,3 @@ class AccountSubscriptionDetailView(UpdateAPIView):
         subscription.status = SubscriptionStatus.PENDING
         subscription.save(update_fields=["pricing_plan", "status"])
         
-        print(f"================= Transaction saved with ID: {intent.id}, awaiting webhook =================")
