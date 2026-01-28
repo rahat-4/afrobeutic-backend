@@ -30,6 +30,8 @@ class CurrentAccountMiddleware(MiddlewareMixin):
         # Media and static files
         re.compile(r"^/media/.*$"),
         re.compile(r"^/static/.*$"),
+        # Stripe webhook
+        re.compile(r"^/api/webhook/stripe/?$"),
     ]
 
     def is_excluded_path(self, path):

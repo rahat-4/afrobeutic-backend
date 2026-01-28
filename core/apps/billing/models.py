@@ -25,23 +25,21 @@ class PricingPlan(BaseModel):
     )
     salon_limit = models.PositiveIntegerField(default=1)
     whatsapp_chatbot_limit = models.PositiveIntegerField(default=0)
-    whatsapp_messages_per_chatbot = models.PositiveIntegerField(
-        default=0
-    )
+    whatsapp_messages_per_chatbot = models.PositiveIntegerField(default=0)
     has_broadcasting = models.BooleanField(default=False)
     broadcasting_message_limit = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
     description = models.TextField(blank=True, null=True)
 
     class Meta:
-            ordering = ["account_category", "price"]
-            constraints = [
-                UniqueConstraint(
-                    Lower("name"),
-                    "account_category",
-                    name="unique_pricing_plan_name_per_category_ci",
-                )
-            ]
+        ordering = ["account_category", "price"]
+        constraints = [
+            UniqueConstraint(
+                Lower("name"),
+                "account_category",
+                name="unique_pricing_plan_name_per_category_ci",
+            )
+        ]
 
     def __str__(self):
         return f"{self.get_account_category_display()}"
@@ -77,7 +75,7 @@ class Subscription(BaseModel):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.account.user.username} - {self.pricing_plan}"
+        return f"{self.account.owner.email} - {self.pricing_plan}"
 
     @property
     def chatbot_limit(self):
@@ -86,6 +84,7 @@ class Subscription(BaseModel):
     @property
     def messages_per_chatbot(self):
         return self.pricing_plan.whatsapp_messages_per_chatbot
+
 
 class Chatbot(BaseModel):
     name = models.CharField(max_length=100)

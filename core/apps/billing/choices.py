@@ -16,6 +16,7 @@ class SubscriptionStatus(models.TextChoices):
 
 class PaymentTransactionStatus(models.TextChoices):
     PENDING = "PENDING", "Pending"
-    COMPLETED = "COMPLETED", "Completed"
+    SUCCEEDED = "SUCCEEDED", "Succeeded"
     FAILED = "FAILED", "Failed"
+    PARTIALLY_REFUNDED = "PARTIALLY_REFUNDED", "Partially Refunded"
     REFUNDED = "REFUNDED", "Refunded"

@@ -1,11 +1,12 @@
 from django.contrib.auth import get_user_model
-from django.db import transaction
 
 from rest_framework import serializers
 
-from apps.authentication.choices import AccountMembershipRole
 from apps.authentication.models import Account, AccountInvitation, AccountMembership
-
+from apps.billing.models import (
+    Subscription,
+    PricingPlan,
+)
 
 User = get_user_model()
 
@@ -66,3 +67,19 @@ class AccountAccessSerializer(serializers.ModelSerializer):
         user = self.context.get("request").user
         membership = obj.members.filter(user=user).first()
         return membership.role if membership else None
+
+
+class AccountSubscriptionSerializer(serializers.ModelSerializer):
+    pricing_plan = serializers.SlugRelatedField(
+        slug_field="uid",
+        queryset=PricingPlan.objects.all(),
+        write_only=True,
+    )
+    payment_method_id = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = Subscription
+        fields = [
+            "pricing_plan",
+            "payment_method_id",
+        ]

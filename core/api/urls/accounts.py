@@ -5,8 +5,9 @@ from ..views.accounts import (
     AccountMemberListView,
     AccountInvitationView,
     AccountAccessListView,
-    AccountSubscriptionDetailView
+    AccountSubscriptionDetailView,
 )
+
 
 urlpatterns = [
     path(

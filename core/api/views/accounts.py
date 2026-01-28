@@ -3,13 +3,25 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from rest_framework import status
-from rest_framework.generics import ListAPIView, RetrieveUpdateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.generics import (
+    ListAPIView,
+    UpdateAPIView,
+    RetrieveUpdateAPIView,
+    RetrieveUpdateDestroyAPIView,
+)
 
 from apps.authentication.models import Account, AccountMembership
-from apps.billing.models import Subscription, PricingPlan
+
+from apps.billing.models import PaymentTransaction
+from apps.billing.choices import PaymentTransactionStatus, SubscriptionStatus
+from apps.billing.utils import (
+    get_or_create_stripe_customer,
+    attach_payment_method,
+    charge_customer,
+)
 
 from apps.authentication.emails import send_account_invitation_email
 
@@ -19,7 +31,7 @@ from ..serializers.accounts import (
     AccountAccessSerializer,
     AccountInvitationSerializer,
     AccountMemberSerializer,
-    AccountSubscriptionSerializer
+    AccountSubscriptionSerializer,
 )
 
 
@@ -78,13 +90,47 @@ class AccountAccessListView(ListAPIView):
         return Account.objects.filter(members__user=user)
 
 
-class AccountSubscriptionDetailView(RetrieveUpdateAPIView):
+
+
+class AccountSubscriptionDetailView(UpdateAPIView):
     serializer_class = AccountSubscriptionSerializer
     permission_classes = [IsOwnerOrAdmin]
 
     def get_object(self):
+        return self.request.account.account_subscription
+
+    def perform_update(self, serializer):
         account = self.request.account
-        try:
-            return account.account_subscription
-        except Subscription.DoesNotExist:
-            return None
+        subscription = self.get_object()
+
+        pricing_plan = serializer.validated_data["pricing_plan"]
+        payment_method_id = serializer.validated_data["payment_method_id"]
+
+        customer_id = get_or_create_stripe_customer(account)
+
+        attach_payment_method(customer_id, payment_method_id)
+
+        print(f"================= Creating PaymentIntent for customer {customer_id} =================")
+        intent = charge_customer(
+            customer_id,
+            payment_method_id,
+            pricing_plan.price,
+        )
+        print(f"================= PaymentIntent created: {intent.id}, status: {intent.status} =================")
+
+        # Save transaction (PENDING, webhook will finalize)
+        PaymentTransaction.objects.create(
+            account=account,
+            subscription=subscription,
+            amount=pricing_plan.price,
+            currency="USD",
+            transaction_id=intent.id,
+            status=PaymentTransactionStatus.PENDING,
+            payment_method=payment_method_id,
+        )
+
+        subscription.pricing_plan = pricing_plan
+        subscription.status = SubscriptionStatus.PENDING
+        subscription.save(update_fields=["pricing_plan", "status"])
+        
+        print(f"================= Transaction saved with ID: {intent.id}, awaiting webhook =================")
