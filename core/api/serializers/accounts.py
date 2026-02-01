@@ -102,7 +102,7 @@ class AccountSubscriptionSerializer(serializers.ModelSerializer):
             "start_date",
             "end_date",
             "next_billing_date",
-            # "auto_renew",
+            "auto_renew",
             "cancelled_at",
             "notes",
             "pricing_plan",

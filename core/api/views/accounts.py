@@ -135,6 +135,9 @@ class AccountSubscriptionDetailView(RetrieveUpdateAPIView):
 
         pricing_plan = serializer.validated_data["pricing_plan"]
         payment_method_id = serializer.validated_data["payment_method_id"]
+        auto_renew = serializer.validated_data.get(
+            "auto_renew", subscription.auto_renew
+        )
 
         customer_id = get_or_create_stripe_customer(account)
 
@@ -159,4 +162,5 @@ class AccountSubscriptionDetailView(RetrieveUpdateAPIView):
 
         subscription.pricing_plan = pricing_plan
         subscription.status = SubscriptionStatus.PENDING
-        subscription.save(update_fields=["pricing_plan", "status"])
+        subscription.auto_renew = auto_renew
+        subscription.save(update_fields=["pricing_plan", "status", "auto_renew"])

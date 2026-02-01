@@ -42,7 +42,7 @@ class PricingPlan(BaseModel):
         ]
 
     def __str__(self):
-        return f"{self.get_account_category_display()}"
+        return f"{self.get_account_category_display()} - {self.name} (${self.price})"
 
 
 class Subscription(BaseModel):

@@ -41,10 +41,14 @@ def attach_payment_method(customer_id, payment_method_id):
 def charge_customer(customer_id, payment_method_id, amount):
     # Stripe minimum charge is $0.50 for USD
     if amount < 0.50:
-        raise ValueError(f"Amount ${amount} is below Stripe's minimum charge amount of $0.50 USD")
-    
-    print(f"Charging customer {customer_id} amount: ${amount} ({int(amount * 100)} cents)")
-    
+        raise ValueError(
+            f"Amount ${amount} is below Stripe's minimum charge amount of $0.50 USD"
+        )
+
+    print(
+        f"Charging customer {customer_id} amount: ${amount} ({int(amount * 100)} cents)"
+    )
+
     return stripe.PaymentIntent.create(
         amount=int(amount * 100),
         currency="usd",
