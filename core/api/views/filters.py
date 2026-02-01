@@ -1,25 +1,55 @@
-from rest_framework.generics import ListAPIView
+from rest_framework.generics import ListAPIView, get_object_or_404
 from rest_framework.exceptions import ValidationError
 
-from apps.billing.models import PricingPlan
+from apps.salon.models import Employee, Salon, Service, Product
 
-from ..serializers.filters import FilterPricingPlanSerializer
+from ..serializers.filters import (
+    FilterEmployeeSerializer,
+    FilterServiceSerializer,
+    FilterProductSerializer,
+)
 
 
-class FilterPricingPlanListView(ListAPIView):
-    queryset = PricingPlan.objects.filter(is_active=True)
-    serializer_class = FilterPricingPlanSerializer
+class FilterEmployeeListView(ListAPIView):
+    serializer_class = FilterEmployeeSerializer  # Assuming a similar serializer exists
     pagination_class = None
 
     def get_queryset(self):
-        account_category = self.request.query_params.get("account_category")
-        if not account_category:
-            raise ValidationError(
-                {"detail": "account_category query parameter is required."}
-            )
-        return (
-            super()
-            .get_queryset()
-            .filter(account_category=account_category)
-            .order_by("price")
-        )
+        account = self.request.account
+
+        salon_uid = self.kwargs.get("salon_uid")
+        salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+
+        queryset = Employee.objects.filter(salon=salon, account=account)
+
+        return queryset
+
+
+class FilterServiceListView(ListAPIView):
+    serializer_class = FilterServiceSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        account = self.request.account
+
+        salon_uid = self.kwargs.get("salon_uid")
+        salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+
+        queryset = Service.objects.filter(salon=salon, account=account)
+
+        return queryset
+
+
+class FilterProductListView(ListAPIView):
+    serializer_class = FilterProductSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        account = self.request.account
+
+        salon_uid = self.kwargs.get("salon_uid")
+        salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+
+        queryset = Product.objects.filter(salon=salon, account=account)
+
+        return queryset
