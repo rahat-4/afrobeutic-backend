@@ -1,15 +1,16 @@
 from django.urls import path
 
 from ..views.config import (
-    TwilioConfListView,
-    TwilioConfDetailView,
+    WhatsappChatbotListView,
+    WhatsappChatbotDetailView,
+    WhatsappChatbotMessageListView,
 )
 
 urlpatterns = [
     path(
-        "/twilio/<uuid:twilio_uid>",
-        TwilioConfDetailView.as_view(),
-        name="config.twilio-detail",
+        "/chatbot/<uuid:chatbot_uid>/messages",
+        WhatsappChatbotMessageListView.as_view(),
     ),
-    path("/twilio", TwilioConfListView.as_view(), name="config.twilio-list"),
+    path("/chatbot/<uuid:chatbot_uid>", WhatsappChatbotDetailView.as_view()),
+    path("/chatbot", WhatsappChatbotListView.as_view()),
 ]

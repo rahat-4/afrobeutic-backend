@@ -5,6 +5,8 @@ from ..views.accounts import (
     AccountMemberListView,
     AccountInvitationView,
     AccountAccessListView,
+    AccountPricingPlanDetailView,
+    AccountPricingPlanListView,
     AccountSubscriptionDetailView,
 )
 
@@ -14,6 +16,16 @@ urlpatterns = [
         "/subscription",
         AccountSubscriptionDetailView.as_view(),
         name="account.subscription-detail",
+    ),
+    path(
+        "/pricing-plans/<uuid:pricing_plan_uid>",
+        AccountPricingPlanDetailView.as_view(),
+        name="account.pricing-plan-detail",
+    ),
+    path(
+        "/pricing-plans",
+        AccountPricingPlanListView.as_view(),
+        name="account.pricing-plan-list",
     ),
     path("/access", AccountAccessListView.as_view(), name="member-account.list"),
     path(

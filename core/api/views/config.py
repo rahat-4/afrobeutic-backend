@@ -1,30 +1,33 @@
-from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.generics import ListAPIView, ListCreateAPIView, RetrieveUpdateDestroyAPIView
 
-from apps.thirdparty.models import TwilioConf
+from apps.thirdparty.models import WhatsappChatbotConfig, WhatsappChatbotMessageLog
 
 from common.permissions import IsOwnerOrAdmin
 
-from ..serializers.config import TwilioConfSerializer
+from ..serializers.config import WhatsappChatbotConfigSerializer, WhatsappChatbotMessageLogSerializer
 
 
-class TwilioConfListView(ListCreateAPIView):
-    serializer_class = TwilioConfSerializer
+class WhatsappChatbotListView(ListCreateAPIView):
+    serializer_class = WhatsappChatbotConfigSerializer
+    permission_classes = [IsOwnerOrAdmin]
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+
+class WhatsappChatbotDetailView(RetrieveUpdateDestroyAPIView):
+    serializer_class = WhatsappChatbotConfigSerializer
+    permission_classes = [IsOwnerOrAdmin]
+
+    def get_object(self):
+        salon_id = self.kwargs["salon_id"]
+        return WhatsappChatbotConfig.objects.get(salon_id=salon_id)
+
+class WhatsappChatbotMessageListView(ListAPIView):
+    serializer_class = WhatsappChatbotMessageLogSerializer
     permission_classes = [IsOwnerOrAdmin]
 
     def get_queryset(self):
-        account = self.request.account
-        return TwilioConf.objects.filter(account=account)
-
-    def perform_create(self, serializer):
-        serializer.save(account=self.request.account)
-
-
-class TwilioConfDetailView(RetrieveUpdateDestroyAPIView):
-    serializer_class = TwilioConfSerializer
-    permission_classes = [IsOwnerOrAdmin]
-    lookup_url_kwarg = "twilio_uid"
-
-    def get_object(self):
-        account = self.request.account
-        twilio_uid = self.kwargs.get(self.lookup_url_kwarg)
-        return TwilioConf.objects.get(account=account, uid=twilio_uid)
+        return WhatsappChatbotMessageLog.objects.filter(
+            chatbot__salon_id=self.kwargs["salon_id"]
+        ).order_by("created_at")

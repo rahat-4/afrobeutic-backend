@@ -3,19 +3,20 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
+from rest_framework.exceptions import ValidationError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.generics import (
     ListAPIView,
-    UpdateAPIView,
+    RetrieveAPIView,
     RetrieveUpdateAPIView,
     RetrieveUpdateDestroyAPIView,
 )
 
 from apps.authentication.models import Account, AccountMembership
 
-from apps.billing.models import PaymentTransaction
+from apps.billing.models import PricingPlan, PaymentTransaction
 from apps.billing.choices import PaymentTransactionStatus, SubscriptionStatus
 from apps.billing.utils import (
     get_or_create_stripe_customer,
@@ -31,6 +32,7 @@ from ..serializers.accounts import (
     AccountAccessSerializer,
     AccountInvitationSerializer,
     AccountMemberSerializer,
+    AccountPricingPlanSerializer,
     AccountSubscriptionSerializer,
 )
 
@@ -90,6 +92,34 @@ class AccountAccessListView(ListAPIView):
         return Account.objects.filter(members__user=user)
 
 
+class AccountPricingPlanListView(ListAPIView):
+    queryset = PricingPlan.objects.filter(is_active=True)
+    serializer_class = AccountPricingPlanSerializer
+    permission_classes = [IsOwnerOrAdmin]
+
+    def get_queryset(self):
+        account = self.request.account
+
+        return (
+            super()
+            .get_queryset()
+            .filter(account_category=account.account_type)
+            .order_by("price")
+        )
+
+
+class AccountPricingPlanDetailView(RetrieveAPIView):
+    serializer_class = AccountPricingPlanSerializer
+    permission_classes = [IsOwnerOrAdmin]
+
+    def get_object(self):
+        uid = self.kwargs.get("pricing_plan_uid")
+
+        try:
+            pricing_plan = PricingPlan.objects.get(uid=uid)
+            return pricing_plan
+        except PricingPlan.DoesNotExist:
+            raise ValidationError("Pricing plan not found.")
 
 
 class AccountSubscriptionDetailView(RetrieveUpdateAPIView):
@@ -130,4 +160,3 @@ class AccountSubscriptionDetailView(RetrieveUpdateAPIView):
         subscription.pricing_plan = pricing_plan
         subscription.status = SubscriptionStatus.PENDING
         subscription.save(update_fields=["pricing_plan", "status"])
-        

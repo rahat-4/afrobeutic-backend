@@ -1,12 +1,9 @@
-from simple_history.models import HistoricalRecords
-
 from django.contrib.auth import get_user_model
 from django.db import models
 
 from common.models import BaseModel
 
-from apps.authentication.models import Account
-from apps.salon.models import Salon, Customer
+from apps.salon.models import Account, Salon, Customer
 
 from .choices import OpenaiGptModel, WhatsappChatbotStatus, WhatsappChatbotMessageRole
 
@@ -23,28 +20,17 @@ class OpenaiConfig(BaseModel):
     welcome_message_instruction = models.TextField(blank=True, null=True)
     suggest_available_time = models.BooleanField(default=False)
 
-    # OnetoOne and Foreign Key Relationships
-    account = models.ForeignKey(
-        Account, on_delete=models.CASCADE, related_name="openai_conf"
-    )  # confusion here, Is one twilio conf per account?
 
 
-class TwilioConf(BaseModel):
+class TwilioConfig(BaseModel):
     account_sid = models.TextField()
     auth_token = models.TextField()
-    messaging_service_sid = models.TextField()
     whatsapp_sender_number = models.CharField(max_length=20)
+    sender_sid = models.CharField(max_length=64)
     webhook_url = models.URLField()
 
-    # Foreign Key Relationships
-    account = models.ForeignKey(
-        Account, on_delete=models.CASCADE, related_name="twilio_conf"
-    )  # confusion here, Is one twilio conf per account?
-
-    # Why message templates relation here?
-
     def __str__(self):
-        return f"TwilioConf for Account: {self.account.name}"
+        return f"TwilioConfig for Account: {self.account_sid}"
 
 
 class TwilioTemplate(BaseModel):
@@ -53,8 +39,8 @@ class TwilioTemplate(BaseModel):
     content_variables = models.JSONField(default=list, blank=True)
 
     # Foreign Key Relationships
-    twilio_conf = models.ForeignKey(
-        TwilioConf, on_delete=models.CASCADE, related_name="message_templates"
+    twilio = models.ForeignKey(
+        TwilioConfig, on_delete=models.CASCADE, related_name="message_templates"
     )
 
 
@@ -72,7 +58,7 @@ class WhatsappChatbotConfig(BaseModel):
         related_name="created_whatsapp_chatbot_configs",
     )
     twilio = models.OneToOneField(
-        TwilioConf,
+        TwilioConfig,
         on_delete=models.CASCADE,
         related_name="twilio_whatsapp_chatbot_configs",
     )
@@ -84,8 +70,11 @@ class WhatsappChatbotConfig(BaseModel):
     salon = models.OneToOneField(
         Salon, on_delete=models.CASCADE, related_name="salon_whatsapp_chatbot_configs"
     )
-
-    history = HistoricalRecords()
+    account = models.ForeignKey(
+        Account,
+        on_delete=models.CASCADE,
+        related_name="account_whatsapp_chatbot_configs",
+    )
 
     def __str__(self):
         return f"WhatsappChatbotConfig for Salon: {self.salon.name} (Status: {self.status})"
@@ -97,19 +86,24 @@ class WhatsappChatbotMessageLog(BaseModel):
     role = models.CharField(
         max_length=20,
         choices=WhatsappChatbotMessageRole.choices,
-        default=WhatsappChatbotMessageRole.USER,
     )
+    note = models.TextField(blank=True, null=True) # Delete it later
 
-    # One-to-One Relationships
-    admin = models.OneToOneField(
-        User,
-        on_delete=models.SET_NULL,
-        related_name="admin_message_logs",
-        null=True,
-        blank=True,
+    # Fk Relationships
+    chatbot = models.ForeignKey(
+        WhatsappChatbotConfig,
+        on_delete=models.CASCADE,
+        related_name="messages"
     )
-    customer = models.OneToOneField(
+    customer = models.ForeignKey(
         Customer,
         on_delete=models.CASCADE,
-        related_name="customer_message_logs",
+        related_name="whatsapp_messages"
+    )
+    admin = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="admin_whatsapp_messages"
     )

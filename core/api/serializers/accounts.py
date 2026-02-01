@@ -71,6 +71,22 @@ class AccountAccessSerializer(serializers.ModelSerializer):
         return membership.role if membership else None
 
 
+class AccountPricingPlanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PricingPlan
+        fields = [
+            "uid",
+            "name",
+            "price",
+            "salon_limit",
+            "whatsapp_chatbot_limit",
+            "whatsapp_messages_per_chatbot",
+            "has_broadcasting",
+            "broadcasting_message_limit",
+            "description",
+        ]
+
+
 class AccountSubscriptionSerializer(serializers.ModelSerializer):
     pricing_plan = serializers.SlugRelatedField(
         slug_field="uid",

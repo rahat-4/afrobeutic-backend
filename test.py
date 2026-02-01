@@ -18,3 +18,46 @@
 #     proxy_send_timeout 60s;
 #     proxy_read_timeout 60s;
 # }
+
+
+
+# class Customer(BaseModel):
+#     phone = PhoneNumberField()
+#     source = models.ForeignKey(
+#         Category,
+#         on_delete=models.PROTECT,
+#         limit_choices_to={"category_type": "CUSTOMER_SOURCE"},
+#         related_name="customer_source",
+#     )
+#     type = models.CharField(
+#         max_length=20, choices=CustomerType.choices, default=CustomerType.LEAD
+#     )
+
+#     # Fk
+#     user = models.ForeignKey(
+#         User, on_delete=models.CASCADE, related_name="user_customers"
+#     )
+
+#     class Meta:
+#         unique_together = ["phone", "user"]
+
+#     def __str__(self):
+#         return f"Customer {self.uid} - {self.user.first_name} {self.user.last_name} - {self.salon.name}"
+
+
+# class SalonCustomer(BaseModel):
+#     customer = models.ForeignKey(
+#         Customer, on_delete=models.CASCADE, related_name="salon_customers"
+#     )
+#     salon = models.ForeignKey(
+#         Salon, on_delete=models.CASCADE, related_name="salon_customers"
+#     )
+#     account = models.ForeignKey(
+#         Account, on_delete=models.CASCADE, related_name="account_salon_customers"
+#     )
+
+#     class Meta:
+#         unique_together = ["customer", "salon"]
+
+#     def __str__(self):
+#         return f"SalonCustomer {self.uid} - {self.customer.phone} - {self.salon.name}"
