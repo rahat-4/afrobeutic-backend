@@ -11,6 +11,6 @@ urlpatterns = [
     path("/config", include("api.urls.config")),
     path("/admin", include("api.urls.admin")),
     path("/subscriptions", include("api.urls.subscriptions")),
-    path("/webhook", include("api.urls.webhook")),
+    path("/webhooks", include("api.urls.webhooks")),
     path("/filters", include("api.urls.filters")),
 ]

@@ -5,8 +5,13 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework import status
 
-from .utils import handle_payment_success, handle_payment_failed
+from apps.billing.utils import handle_payment_failed, handle_payment_success
+from apps.thirdparty.utils import create_twilio_subaccount, register_twilio_whatsapp_sender
+
+from common.permissions import IsOwner
 
 
 @csrf_exempt
@@ -48,3 +53,42 @@ def stripe_webhook(request):
         )
 
     return Response(status=200)
+
+
+class WhatsappOnboardView(APIView):
+    """
+    Receives Embedded Signup result from frontend and registers the sender with Twilio.
+    """
+
+    permission_classes = [IsOwner]
+
+    def post(self, request):
+        waba_id = request.data.get("waba_id")
+        phone_number = request.data.get("phone_number")
+        customer_name = request.data.get("customer_name")
+
+        if not waba_id or not phone_number:
+            return Response(
+                {"error": "Missing waba_id or phone_number"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        
+        # Create a subaccount for the salon
+        subaccount = create_twilio_subaccount(friendly_name=customer_name)
+
+        # Register whatsapp sender on Twilio
+        sender = register_twilio_whatsapp_sender(
+            subaccount_sid=subaccount["account_sid"],
+            subaccount_auth_token=subaccount["auth_token"],
+            waba_id=waba_id,
+            phone_number=phone_number,
+        )
+
+        return Response(
+            {
+                "subaccount": subaccount,
+                "sender": sender,
+            },
+            status=status.HTTP_201_CREATED,
+        )

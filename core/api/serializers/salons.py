@@ -105,13 +105,16 @@ class SalonSerializer(serializers.ModelSerializer):
 
         account = self.context["request"].account
 
-        if (
-            account.account_type == AccountType.INDIVIDUAL_STYLIST
-            and Salon.objects.filter(account=account).exists()
-        ):
-            errors["account"] = [
-                "Individual stylists cannot create more than one salon."
-            ]
+        if account.account_type == AccountType.INDIVIDUAL_STYLIST:
+            qs = Salon.objects.filter(account=account)
+
+            if self.instance:
+                qs = qs.exclude(uid=self.instance.uid)
+
+            if qs.exists():
+                errors["account"] = [
+                    "Individual stylists cannot create more than one salon."
+                ]
 
         for day_data in opening_hours:
             day = day_data.get("day")

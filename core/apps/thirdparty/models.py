@@ -11,6 +11,10 @@ User = get_user_model()
 
 
 class OpenaiConfig(BaseModel):
+    """
+    Singleton model for global OpenAI configuration.
+    """
+
     api_key = models.TextField()
     gpt_model = models.CharField(
         max_length=100,
@@ -20,6 +24,8 @@ class OpenaiConfig(BaseModel):
     welcome_message_instruction = models.TextField(blank=True, null=True)
     suggest_available_time = models.BooleanField(default=False)
 
+    def __str__(self):
+        return f"OpenaiConfig (Model: {self.gpt_model})"
 
 
 class TwilioConfig(BaseModel):
@@ -28,6 +34,12 @@ class TwilioConfig(BaseModel):
     whatsapp_sender_number = models.CharField(max_length=20)
     sender_sid = models.CharField(max_length=64)
     webhook_url = models.URLField()
+
+    account = models.OneToOneField(
+        Account,
+        on_delete=models.CASCADE,
+        related_name="twilio_config",
+    )
 
     def __str__(self):
         return f"TwilioConfig for Account: {self.account_sid}"
@@ -87,23 +99,19 @@ class WhatsappChatbotMessageLog(BaseModel):
         max_length=20,
         choices=WhatsappChatbotMessageRole.choices,
     )
-    note = models.TextField(blank=True, null=True) # Delete it later
+    note = models.TextField(blank=True, null=True)  # Delete it later
 
     # Fk Relationships
     chatbot = models.ForeignKey(
-        WhatsappChatbotConfig,
-        on_delete=models.CASCADE,
-        related_name="messages"
+        WhatsappChatbotConfig, on_delete=models.CASCADE, related_name="messages"
     )
     customer = models.ForeignKey(
-        Customer,
-        on_delete=models.CASCADE,
-        related_name="whatsapp_messages"
+        Customer, on_delete=models.CASCADE, related_name="whatsapp_messages"
     )
     admin = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="admin_whatsapp_messages"
+        related_name="admin_whatsapp_messages",
     )
