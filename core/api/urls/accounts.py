@@ -8,10 +8,16 @@ from ..views.accounts import (
     AccountPricingPlanDetailView,
     AccountPricingPlanListView,
     AccountSubscriptionDetailView,
+    AccountWhatsappOnboardView,
 )
 
 
 urlpatterns = [
+    path(
+        "/whatsapp-onboard",
+        AccountWhatsappOnboardView.as_view(),
+        name="account.whatsapp-onboard",
+    ),
     path(
         "/subscription",
         AccountSubscriptionDetailView.as_view(),

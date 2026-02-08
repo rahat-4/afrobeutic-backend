@@ -24,6 +24,7 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "afrobeutic.com",
     "afrobeutic-frontend.vercel.app",
+    "crm.afrobeutic.com",
 ]
 
 
@@ -211,6 +212,8 @@ FRONTEND_URL = config("FRONTEND_URL")
 BACKEND_URL = config("BACKEND_URL")
 STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET")
+TWILIO_ACCOUNT_SID = config("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = config("TWILIO_AUTH_TOKEN")
 
 CACHES = {
     "default": {
@@ -241,6 +244,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://www.client.afrobeutic.com",
     "https://client.afrobeutic.com",
     "https://afrobeutic-frontend.vercel.app",
+    "https://crm.afrobeutic.com",
 ]
 
 
