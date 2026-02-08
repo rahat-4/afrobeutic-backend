@@ -32,14 +32,14 @@ from ..views.salons import (
     TopEmployeeApiView,
     TopSellingServiceApiView,
     TopSellingProductApiView,
-    SalonWhatsappOnboardView,
+    SalonWhatsappView,
 )
 
 urlpatterns = [
     path(
-        "/<uuid:salon_uid>/whatsapp-onboard",
-        SalonWhatsappOnboardView.as_view(),
-        name="salon.whatsapp-onboard",
+        "/<uuid:salon_uid>/whatsapp",
+        SalonWhatsappView.as_view(),
+        name="salon.whatsapp",
     ),
     path(
         "/<uuid:salon_uid>/analytics/top-selling-products",

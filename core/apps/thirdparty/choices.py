@@ -19,3 +19,8 @@ class WhatsappChatbotMessageRole(models.TextChoices):
     USER = "USER", "User"
     BOT = "BOT", "Bot"
     ADMIN = "ADMIN", "Admin"
+
+
+class WhatsappSenderStatus(models.TextChoices):
+    ACTIVE = "ACTIVE", "Active"
+    INACTIVE = "INACTIVE", "Inactive"

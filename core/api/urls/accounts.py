@@ -8,10 +8,16 @@ from ..views.accounts import (
     AccountPricingPlanDetailView,
     AccountPricingPlanListView,
     AccountSubscriptionDetailView,
+    AccountMetaConfigView,
 )
 
 
 urlpatterns = [
+    path(
+        "/meta-config",
+        AccountMetaConfigView.as_view(),
+        name="account.meta-config",
+    ),
     path(
         "/subscription",
         AccountSubscriptionDetailView.as_view(),

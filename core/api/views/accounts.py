@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decouple import config
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -25,7 +26,10 @@ from apps.billing.utils import (
     charge_customer,
 )
 from apps.authentication.emails import send_account_invitation_email
+from apps.thirdparty.models import MetaConfig
+from apps.thirdparty.utils import create_twilio_subaccount
 
+from common.crypto import encrypt_data, decrypt_data
 from common.permissions import IsOwner, IsOwnerOrAdmin, IsOwnerOrAdminOrStaff
 
 from ..serializers.accounts import (
@@ -165,3 +169,49 @@ class AccountSubscriptionDetailView(RetrieveUpdateAPIView):
             subscription.status = SubscriptionStatus.PENDING
             subscription.auto_renew = auto_renew
             subscription.save(update_fields=["pricing_plan", "status", "auto_renew"])
+
+
+class AccountMetaConfigView(APIView):
+    permission_classes = [IsOwnerOrAdmin]
+
+    def post(self, request):
+        account = request.account
+        crypto_password = config("CRYPTO_PASSWORD")
+        waba_id = request.data.get("waba_id")
+
+        if not waba_id:
+            return Response(
+                {"error": "Missing waba_id"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        with transaction.atomic():
+            subaccount = create_twilio_subaccount(friendly_name=account.name)
+
+            encrypted_waba_id = encrypt_data(waba_id, crypto_password)
+            encrypted_account_sid = encrypt_data(
+                subaccount["account_sid"], crypto_password
+            )
+            encrypted_auth_token = encrypt_data(
+                subaccount["auth_token"], crypto_password
+            )
+
+            meta_config, created = MetaConfig.objects.get_or_create(
+                account=account,
+                defaults={
+                    "waba_id": encrypted_waba_id,
+                    "account_sid": encrypted_account_sid,
+                    "auth_token": encrypted_auth_token,
+                },
+            )
+
+        return Response(
+            {
+                "message": (
+                    "Meta configuration created."
+                    if created
+                    else "Meta configuration already exists."
+                )
+            },
+            status=status.HTTP_201_CREATED if created else status.HTTP_400_BAD_REQUEST,
+        )

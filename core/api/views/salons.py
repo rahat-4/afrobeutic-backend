@@ -1447,64 +1447,65 @@ class TopSellingProductApiView(APIView):
         )
 
 
-class SalonWhatsappOnboardView(APIView):
+class SalonWhatsappView(APIView):
     """
     Receives Embedded Signup result from frontend and registers the sender with Twilio.
     """
 
     permission_classes = []
 
+    def get(self, request, salon_uid, *args, **kwargs):
+        account = request.account
+        salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+
+        twilio_config = TwilioConfig.objects.filter(
+            salon=salon, account=account
+        ).first()
+
+        if not twilio_config:
+            return Response(
+                {"error": "No WhatsApp sender registered for this salon"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        whatsapp_sender_number = twilio_config.whatsapp_sender_number
+
+        return Response(
+            {
+                "salon": salon.name,
+                "whatsapp_sender_number": whatsapp_sender_number,
+                "sender_status": twilio_config.sender_status,
+            },
+            status=status.HTTP_200_OK,
+        )
+
     def post(self, request, salon_uid, *args, **kwargs):
         with transaction.atomic():
             print("------------------------------->", request.data)
-            waba_id = request.data.get("waba_id")
             whatsapp_sender_number = request.data.get("whatsapp_sender_number")
 
-            if not waba_id or not whatsapp_sender_number:
+            if not whatsapp_sender_number:
                 return Response(
-                    {"error": "Missing waba_id or whatsapp_sender_number"},
+                    {"error": "Missing whatsapp_sender_number"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
             # Create a subaccount for the salon
             account = request.account
             salon = get_object_or_404(Salon, uid=salon_uid, account=account)
-            # subaccount = create_twilio_subaccount(friendly_name=salon.name)
+            meta_config = account.account_meta_config
 
-            # # Store credentials in the database
             crypto_password = config("CRYPTO_PASSWORD")
-            # encrypted_auth_token = encrypt_data(
-            #     subaccount["auth_token"], crypto_password
-            # )
-            # encrypted_account_sid = encrypt_data(
-            #     subaccount["account_sid"], crypto_password
-            # )
-            # encrypt_waba_id = encrypt_data(waba_id, crypto_password)
+            auth_token = decrypt_data(meta_config.auth_token, crypto_password)
+            account_sid = decrypt_data(meta_config.account_sid, crypto_password)
+            waba_id = decrypt_data(meta_config.waba_id, crypto_password)
 
-            # twilio_config = TwilioConfig.objects.create(
-            #     account_sid=encrypted_account_sid,
-            #     auth_token=encrypted_auth_token,
-            #     waba_id=encrypt_waba_id,
-            #     whatsapp_sender_number=f"whatsapp:{whatsapp_sender_number}",
-            #     salon=salon,
-            #     account=account,
-            # )
+            print("-------------------------------> Account SID:", account_sid)
+            print("-------------------------------> Auth Token:", auth_token)
+            print("-------------------------------> WABA ID:", waba_id)
 
-            twilio_config = TwilioConfig.objects.get(salon=salon, account=account)
-
-            account_sid = decrypt_data(twilio_config.account_sid, crypto_password)
-            auth_token = decrypt_data(twilio_config.auth_token, crypto_password)
-
-            print("-------------------------------> Subaccount created:", twilio_config)
-
-            print(
-                "-------------------------------> Registering sender with Twilio API using account_sid:",
-                account_sid,
-                auth_token,
-            )
-
-            # client = Client(subaccount["account_sid"], subaccount["auth_token"])
             client = Client(account_sid, auth_token)
+            # client = Client(account_sid, auth_token)
             sender = client.messaging.v2.channels_senders.create(
                 messaging_v2_channels_sender_requests_create=ChannelsSenderList.MessagingV2ChannelsSenderRequestsCreate(
                     {
@@ -1531,6 +1532,18 @@ class SalonWhatsappOnboardView(APIView):
                 )
             )
 
+            # # Store credentials in the database
+            encrypt_sender_sid = encrypt_data(sender.sid, crypto_password)
+
+            twilio_config = TwilioConfig.objects.create(
+                sender_sid=encrypt_sender_sid,
+                whatsapp_sender_number=f"whatsapp:{whatsapp_sender_number}",
+                sender_status=sender.status,
+                salon=salon,
+                account=account,
+            )
+            print("-------------------------------> Subaccount created:", twilio_config)
+
             return Response(
                 {
                     "message": "WhatsApp sender registered successfully",
@@ -1538,4 +1551,31 @@ class SalonWhatsappOnboardView(APIView):
                     "sender_status": sender.status,
                 },
                 status=status.HTTP_201_CREATED,
+            )
+
+    def delete(self, request, salon_uid):
+        with transaction.atomic():
+            account = request.account
+            salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+
+            meta_config = account.account_meta_config
+            account_sid = decrypt_data(
+                meta_config.account_sid, config("CRYPTO_PASSWORD")
+            )
+            auth_token = decrypt_data(meta_config.auth_token, config("CRYPTO_PASSWORD"))
+
+            twilio_config = get_object_or_404(
+                TwilioConfig, salon=salon, account=account
+            )
+            sender_sid = decrypt_data(
+                twilio_config.sender_sid, config("CRYPTO_PASSWORD")
+            )
+            client = Client(account_sid, auth_token)
+
+            client.messaging.v2.channels_senders(sender_sid).delete()
+            twilio_config.delete()
+
+            return Response(
+                {"message": "WhatsApp configuration deleted successfully"},
+                status=status.HTTP_204_NO_CONTENT,
             )

@@ -5,6 +5,13 @@ from common.models import BaseModel
 
 from apps.salon.models import Account, Salon, Customer
 
+from .choices import (
+    OpenaiGptModel,
+    WhatsappChatbotStatus,
+    WhatsappChatbotMessageRole,
+    WhatsappSenderStatus,
+)
+
 # from .choices import OpenaiGptModel, WhatsappChatbotStatus, WhatsappChatbotMessageRole
 
 # User = get_user_model()
@@ -32,17 +39,32 @@ from apps.salon.models import Account, Salon, Customer
 #         return f"OpenaiConfig (Model: {self.gpt_model})"
 
 
-class TwilioConfig(BaseModel):
+class MetaConfig(BaseModel):
+    waba_id = models.JSONField(default=dict)
     account_sid = models.JSONField(default=dict)
     auth_token = models.JSONField(default=dict)
-    waba_id = models.JSONField(default=dict)
+
+    account = models.OneToOneField(
+        Account,
+        on_delete=models.CASCADE,
+        related_name="account_meta_config",
+    )
+
+
+class TwilioConfig(BaseModel):
+    sender_sid = models.JSONField(default=dict)
     whatsapp_sender_number = models.CharField(max_length=100)
+    sender_status = models.CharField(
+        max_length=20,
+        choices=WhatsappSenderStatus.choices,
+        default=WhatsappSenderStatus.ACTIVE,
+    )
 
     # Fk
     salon = models.OneToOneField(
         Salon, on_delete=models.CASCADE, related_name="salon_twilio_config"
     )
-    account = models.ForeignKey(
+    account = models.OneToOneField(
         Account,
         on_delete=models.CASCADE,
         related_name="account_twilio_config",
