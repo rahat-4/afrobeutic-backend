@@ -105,15 +105,18 @@ class SalonSerializer(serializers.ModelSerializer):
 
         account = self.context["request"].account
 
-        if account.account_type == AccountType.INDIVIDUAL_STYLIST:
-            qs = Salon.objects.filter(account=account)
+        subscription = account.account_subscription
+        if subscription and subscription.pricing_plan.salon_limit:
+            salon_limit = subscription.pricing_plan.salon_limit
+            existing_salons_count = Salon.objects.filter(account=account).count()
 
             if self.instance:
-                qs = qs.exclude(uid=self.instance.uid)
+                # If updating an existing salon, exclude it from the count
+                existing_salons_count -= 1
 
-            if qs.exists():
-                errors["account"] = [
-                    "Individual stylists cannot create more than one salon."
+            if existing_salons_count >= salon_limit:
+                errors["salon_limit"] = [
+                    f"Your current subscription plan allows a maximum of {salon_limit} salon(s). Please upgrade your plan to add more salons."
                 ]
 
         for day_data in opening_hours:

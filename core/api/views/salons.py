@@ -2,7 +2,13 @@ from calendar import monthrange
 from datetime import datetime
 from datetime import timedelta
 from decimal import Decimal
+from decouple import config
 
+# Register whatsapp sender on Twilio
+from twilio.rest import Client
+from twilio.rest.messaging.v2 import ChannelsSenderList
+
+from django.db import transaction
 from django.db.models import Prefetch, Count, Sum, F, DecimalField, Q
 from django.db.models.functions import ExtractWeekDay, ExtractHour
 from django.http import FileResponse
@@ -33,6 +39,10 @@ from apps.salon.models import (
     Employee,
 )
 
+from apps.thirdparty.models import TwilioConfig
+from apps.thirdparty.utils import create_twilio_subaccount
+
+from common.crypto import encrypt_data, decrypt_data
 from common.filters import BookingDateFilter
 from common.permissions import (
     IsOwner,
@@ -1436,3 +1446,96 @@ class TopSellingProductApiView(APIView):
             ]
         )
 
+
+class SalonWhatsappOnboardView(APIView):
+    """
+    Receives Embedded Signup result from frontend and registers the sender with Twilio.
+    """
+
+    permission_classes = []
+
+    def post(self, request, salon_uid, *args, **kwargs):
+        with transaction.atomic():
+            print("------------------------------->", request.data)
+            waba_id = request.data.get("waba_id")
+            whatsapp_sender_number = request.data.get("whatsapp_sender_number")
+
+            if not waba_id or not whatsapp_sender_number:
+                return Response(
+                    {"error": "Missing waba_id or whatsapp_sender_number"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Create a subaccount for the salon
+            account = request.account
+            salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+            # subaccount = create_twilio_subaccount(friendly_name=salon.name)
+
+            # # Store credentials in the database
+            crypto_password = config("CRYPTO_PASSWORD")
+            # encrypted_auth_token = encrypt_data(
+            #     subaccount["auth_token"], crypto_password
+            # )
+            # encrypted_account_sid = encrypt_data(
+            #     subaccount["account_sid"], crypto_password
+            # )
+            # encrypt_waba_id = encrypt_data(waba_id, crypto_password)
+
+            # twilio_config = TwilioConfig.objects.create(
+            #     account_sid=encrypted_account_sid,
+            #     auth_token=encrypted_auth_token,
+            #     waba_id=encrypt_waba_id,
+            #     whatsapp_sender_number=f"whatsapp:{whatsapp_sender_number}",
+            #     salon=salon,
+            #     account=account,
+            # )
+
+            twilio_config = TwilioConfig.objects.get(salon=salon, account=account)
+
+            account_sid = decrypt_data(twilio_config.account_sid, crypto_password)
+            auth_token = decrypt_data(twilio_config.auth_token, crypto_password)
+
+            print("-------------------------------> Subaccount created:", twilio_config)
+
+            print(
+                "-------------------------------> Registering sender with Twilio API using account_sid:",
+                account_sid,
+                auth_token,
+            )
+
+            # client = Client(subaccount["account_sid"], subaccount["auth_token"])
+            client = Client(account_sid, auth_token)
+            sender = client.messaging.v2.channels_senders.create(
+                messaging_v2_channels_sender_requests_create=ChannelsSenderList.MessagingV2ChannelsSenderRequestsCreate(
+                    {
+                        "sender_id": f"whatsapp:{whatsapp_sender_number}",
+                        "configuration": ChannelsSenderList.MessagingV2ChannelsSenderConfiguration(
+                            {
+                                "waba_id": waba_id,
+                            }
+                        ),
+                        "profile": ChannelsSenderList.MessagingV2ChannelsSenderProfile(
+                            {"name": salon.name[:64]}
+                        ),
+                        "webhook": ChannelsSenderList.MessagingV2ChannelsSenderWebhook(
+                            {
+                                "callback_url": "https://api.afrobeutic.com/webhooks/whatsapp-callback",
+                                "callback_method": "POST",
+                                "fallback_url": "https://api.afrobeutic.com/webhooks/whatsapp-fallback",
+                                "fallback_method": "POST",
+                                "status_callback_url": "https://api.afrobeutic.com/webhooks/whatsapp-callback-status",
+                                "status_callback_method": "POST",
+                            }
+                        ),
+                    }
+                )
+            )
+
+            return Response(
+                {
+                    "message": "WhatsApp sender registered successfully",
+                    "salon": salon.name,
+                    "sender_status": sender.status,
+                },
+                status=status.HTTP_201_CREATED,
+            )

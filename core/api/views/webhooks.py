@@ -9,18 +9,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.billing.utils import handle_payment_failed, handle_payment_success
-from apps.salon.choices import CustomerType
-from apps.salon.models import Customer, Salon
-from apps.thirdparty.choices import WhatsappChatbotMessageRole
-from apps.thirdparty.models import WhatsappChatbotConfig, WhatsappChatbotMessageLog
-from common.choices import CategoryType
-from common.utils import get_or_create_category
-
-
-def _normalize_whatsapp_number(number):
-    if not number:
-        return None
-    return number.replace("whatsapp:", "")
 
 
 @csrf_exempt
