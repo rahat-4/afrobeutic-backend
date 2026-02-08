@@ -1,10 +1,10 @@
+import jwt
 from urllib.parse import urlencode
 
-from datetime import timezone
+from datetime import timedelta, timezone
 from django.utils.http import urlsafe_base64_decode
 from django.http import HttpResponseRedirect
 from django.contrib.auth import get_user_model
-from django.utils import timezone
 from django.conf import settings
 
 from rest_framework.views import APIView
@@ -23,8 +23,11 @@ from apps.authentication.emails import (
 from apps.billing.models import Subscription
 from apps.billing.choices import SubscriptionStatus
 
+from apps.salon.models import Customer
+
+from common.models import CustomerOtp
 from common.throttles import RoleBasedLoginThrottle
-from common.utils import email_token_generator
+from common.utils import email_token_generator, generate_otp, otp_expiry
 
 from ..serializers.auth import (
     UserRegistrationSerializer,
@@ -75,10 +78,11 @@ class VerifyEmailView(APIView):
         if email_token_generator.check_token(user, token):
             user.is_active = True
             user.save()
-            
-            Subscription.objects.filter(account__owner=user, status=SubscriptionStatus.PENDING).update(
-                status=SubscriptionStatus.TRIAL)
-            
+
+            Subscription.objects.filter(
+                account__owner=user, status=SubscriptionStatus.PENDING
+            ).update(status=SubscriptionStatus.TRIAL)
+
             return HttpResponseRedirect(f"{settings.FRONTEND_URL}/auth/login")
         else:
             params = urlencode({"error": "expired_or_invalid"})
@@ -269,6 +273,84 @@ class MeView(APIView):
         serializer.save()
 
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class SendCustomerOTPView(APIView):
+    permission_classes = []
+
+    def post(self, request):
+        phone = request.data.get("phone")
+        if not phone:
+            return Response(
+                {"error": "Phone number is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            customer = Customer.objects.get(phone=phone)
+        except Customer.DoesNotExist:
+            return Response(
+                {"error": "Customer not found!"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        otp_code = generate_otp()
+
+        CustomerOtp.objects.create(
+            customer=customer,
+            otp_code=otp_code,
+            expires_at=otp_expiry(),
+        )
+
+        # Send via Twilio/ Whatsapp
+        # send_otp_sms(phone, code)
+
+        return Response(
+            {"message": "OTP sent."},
+            status=status.HTTP_200_OK,
+        )
+
+
+class VerifyCustomerOTPView(APIView):
+    permission_classes = []
+
+    def post(self, request):
+        otp_code = request.data.get("otp_code")
+
+        if not otp_code:
+            return Response(
+                {"error": "OTP code is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        otp_record = CustomerOtp.objects.filter(
+            otp_code=otp_code, is_used=False, expires_at__gt=timezone.now()
+        ).first()
+
+        if not otp_record or otp_record.expires_at < timezone.now():
+            return Response(
+                {"error": "Invalid or expired OTP."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        otp_record.is_used = True
+        otp_record.save(update_fields=["is_used"])
+
+        customer = otp_record.customer
+
+        token = jwt.encode(
+            {
+                "customer_uid": str(customer.uid),
+                "exp": timezone.now() + timedelta(hours=24),
+            },
+            settings.SECRET_KEY,
+            algorithm="HS256",
+        )
+
+        return Response(
+            {"message": "OTP verified successfully.", "token": token},
+            status=status.HTTP_200_OK,
+        )
 
 
 # # utils.py

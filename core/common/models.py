@@ -93,3 +93,24 @@ class Media(BaseModel):
 
     def __str__(self):
         return f"Media: {self.uid}"
+
+
+class CustomerOtp(BaseModel):
+    from apps.salon.models import Customer
+
+    otp_code = models.CharField(max_length=6)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+
+    # Fk
+    customer = models.ForeignKey(
+        Customer, on_delete=models.CASCADE, related_name="otps"
+    )
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["customer", "otp_code"]),
+        ]
+
+    def __str__(self):
+        return f"OTP for {self.customer.email} | UID: {self.uid}"

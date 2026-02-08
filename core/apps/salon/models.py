@@ -337,7 +337,7 @@ class Customer(BaseModel):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     email = models.EmailField(blank=True, null=True)
-    phone = PhoneNumberField()
+    phone = PhoneNumberField(unique=True)
     source = models.ForeignKey(
         Category,
         on_delete=models.PROTECT,
@@ -355,9 +355,6 @@ class Customer(BaseModel):
     salon = models.ForeignKey(
         Salon, on_delete=models.CASCADE, related_name="salon_customers"
     )
-
-    class Meta:
-        unique_together = ["account", "phone"]
 
     def __str__(self):
         return f"Customer {self.uid} - {self.first_name} {self.last_name} - {self.salon.name}"
@@ -402,7 +399,11 @@ class Booking(BaseModel):
         Customer, on_delete=models.CASCADE, related_name="customer_bookings"
     )
     chair = models.ForeignKey(
-        Chair, on_delete=models.CASCADE, blank=True, null=True, related_name="chair_bookings"
+        Chair,
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+        related_name="chair_bookings",
     )
     employee = models.ForeignKey(
         Employee,

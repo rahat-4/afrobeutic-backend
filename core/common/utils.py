@@ -1,11 +1,18 @@
+import jwt
+import random
+from datetime import timedelta
 from io import BytesIO
 from datetime import timedelta, datetime, timezone as dt_timezone
 from decimal import Decimal
 from weasyprint import HTML
 
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.conf import settings
 from django.utils import timezone
 from django.template.loader import render_to_string
+
+from rest_framework.authentication import BaseAuthentication
+from rest_framework.exceptions import AuthenticationFailed
 
 
 class EmailVerificationTokenGenerator(PasswordResetTokenGenerator):
@@ -87,3 +94,12 @@ def generate_receipt_pdf(booking):
     pdf_file.seek(0)
 
     return pdf_file
+
+
+def generate_otp():
+    """Generate a random 6-digit OTP code."""
+    return f"{random.randint(100000, 999999)}"
+
+
+def otp_expiry(minutes=5):
+    return timezone.now() + timedelta(minutes=minutes)
