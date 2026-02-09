@@ -8,9 +8,21 @@ from ..views.auth import (
     LoginView,
     LogoutView,
     MeView,
+    SendCustomerOTPView,
+    VerifyCustomerOTPView,
 )
 
 urlpatterns = [
+    path(
+        "/verify-otp",
+        VerifyCustomerOTPView.as_view(),
+        name="auth.verify-customer-otp",
+    ),
+    path(
+        "/send-otp",
+        SendCustomerOTPView.as_view(),
+        name="auth.send-customer-otp",
+    ),
     path(
         "/accept-invitation/<token>/",
         AcceptInvitationView.as_view(),

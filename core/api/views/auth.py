@@ -1,7 +1,9 @@
 import jwt
 from urllib.parse import urlencode
 
-from datetime import timedelta, timezone
+from datetime import timedelta
+
+from django.utils import timezone
 from django.utils.http import urlsafe_base64_decode
 from django.http import HttpResponseRedirect
 from django.contrib.auth import get_user_model
@@ -19,6 +21,7 @@ from apps.authentication.models import AccountInvitation, AccountMembership
 from apps.authentication.emails import (
     send_verification_email,
 )
+from apps.authentication.sms import send_otp_sms, send_otp_whatsapp
 
 from apps.billing.models import Subscription
 from apps.billing.choices import SubscriptionStatus
@@ -28,6 +31,7 @@ from apps.salon.models import Customer
 from common.models import CustomerOtp
 from common.throttles import RoleBasedLoginThrottle
 from common.utils import email_token_generator, generate_otp, otp_expiry
+
 
 from ..serializers.auth import (
     UserRegistrationSerializer,
@@ -302,8 +306,18 @@ class SendCustomerOTPView(APIView):
             expires_at=otp_expiry(),
         )
 
-        # Send via Twilio/ Whatsapp
-        # send_otp_sms(phone, code)
+        # try:
+        # SMS
+        # send_otp_sms(phone, otp_code)
+
+        # OR WhatsApp
+        send_otp_whatsapp(phone, otp_code)
+
+        # except Exception as e:
+        #     return Response(
+        #         {"error": "Failed to send OTP."},
+        #         status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        #     )
 
         return Response(
             {"message": "OTP sent."},

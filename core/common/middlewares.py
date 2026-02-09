@@ -19,6 +19,13 @@ class CurrentAccountMiddleware(MiddlewareMixin):
         re.compile(r"^/api/auth/verify-email/.*$"),
         re.compile(r"^/api/auth/resend-verification-email/?$"),
         re.compile(r"^/api/auth/accept-invitation/[0-9a-fA-F-]+/?$"),
+        # Consumers
+        re.compile(r"^/api/auth/send-otp/?$"),
+        re.compile(r"^/api/auth/verify-otp/?$"),
+        re.compile(r"^/api/consumers/profile/?$"),
+        re.compile(r"^/api/consumers/bookings/?$"),
+        re.compile(r"^/api/consumers/bookings/[0-9a-fA-F-]{36}/?$"),
+        re.compile(r"^/api/consumers/bookings/[0-9a-fA-F-]{36}/receipt/?$"),
         # API documentation and schema
         re.compile(r"^/api/docs/?$"),
         re.compile(r"^/api/redoc/?$"),

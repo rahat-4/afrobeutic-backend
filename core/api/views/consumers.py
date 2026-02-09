@@ -19,6 +19,7 @@ class CustomerProfileView(RetrieveUpdateAPIView):
     queryset = Customer.objects.filter(type=CustomerType.CUSTOMER)
     serializer_class = CustomerProfileSerializer
     authentication_classes = [CustomerJWTAuthentication]
+    permission_classes = []
 
     def get_object(self):
         return self.request.customer
@@ -27,9 +28,10 @@ class CustomerProfileView(RetrieveUpdateAPIView):
 class CustomerBookingListView(ListAPIView):
     serializer_class = CustomerBookingSerializer
     authentication_classes = [CustomerJWTAuthentication]
+    permission_classes = []
 
     def get_queryset(self):
-        return self.request.customer.bookings.all()
+        return self.request.customer.customer_bookings.all()
 
 
 class CustomerBookingDetailView(RetrieveAPIView):
@@ -38,10 +40,12 @@ class CustomerBookingDetailView(RetrieveAPIView):
     authentication_classes = [CustomerJWTAuthentication]
     lookup_field = "uid"
     lookup_url_kwarg = "booking_uid"
+    permission_classes = []
 
 
 class CustomerReceiptDownloadAPIView(APIView):
     authentication_classes = [CustomerJWTAuthentication]
+    permission_classes = []
 
     def get(self, request, booking_uid, *args, **kwargs):
         try:
