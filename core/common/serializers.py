@@ -8,6 +8,7 @@ from apps.salon.models import (
     Customer,
     Employee,
     Salon,
+    OpeningHours,
     Product,
     Service,
     Chair,
@@ -225,6 +226,7 @@ class ProductCategorySerializer(serializers.ModelSerializer):
         model = ProductCategory
         fields = ["uid", "name"]
 
+
 class PricingPlanSlimSerializer(serializers.ModelSerializer):
     class Meta:
         model = PricingPlan
@@ -241,4 +243,10 @@ class PricingPlanSlimSerializer(serializers.ModelSerializer):
             "is_active",
             "description",
         ]
-    
+
+
+class OpeningHoursSlimSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = OpeningHours
+        exclude = ["salon", "created_at", "updated_at"]

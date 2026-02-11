@@ -1,2 +1,9 @@
+import zoneinfo
+
+
 def get_user_media_path_prefix(instance: object, filename: str) -> str:
     return f"user/{instance.email}/{filename}"
+
+
+def get_timezones():
+    return [(tz, tz) for tz in sorted(zoneinfo.available_timezones())]

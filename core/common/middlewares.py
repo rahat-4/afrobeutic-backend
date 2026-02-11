@@ -19,6 +19,12 @@ class CurrentAccountMiddleware(MiddlewareMixin):
         re.compile(r"^/api/auth/verify-email/.*$"),
         re.compile(r"^/api/auth/resend-verification-email/?$"),
         re.compile(r"^/api/auth/accept-invitation/[0-9a-fA-F-]+/?$"),
+        # Landing page
+        re.compile(r"^/api/public/salons/?$"),
+        re.compile(r"^/api/public/salons/[0-9a-fA-F-]{36}/?$"),
+        re.compile(r"^/api/filters/[0-9a-fA-F-]{36}/services/?$"),
+        re.compile(r"^/api/filters/[0-9a-fA-F-]{36}/products/?$"),
+        re.compile(r"^/api/public/booking/?$"),
         # Consumers
         re.compile(r"^/api/auth/send-otp/?$"),
         re.compile(r"^/api/auth/verify-otp/?$"),

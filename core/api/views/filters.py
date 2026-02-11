@@ -28,14 +28,13 @@ class FilterEmployeeListView(ListAPIView):
 class FilterServiceListView(ListAPIView):
     serializer_class = FilterServiceSerializer
     pagination_class = None
+    permission_classes = []
 
     def get_queryset(self):
-        account = self.request.account
-
         salon_uid = self.kwargs.get("salon_uid")
-        salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+        salon = get_object_or_404(Salon, uid=salon_uid)
 
-        queryset = Service.objects.filter(salon=salon, account=account)
+        queryset = Service.objects.filter(salon=salon)
 
         return queryset
 
@@ -43,13 +42,12 @@ class FilterServiceListView(ListAPIView):
 class FilterProductListView(ListAPIView):
     serializer_class = FilterProductSerializer
     pagination_class = None
+    permission_classes = []
 
     def get_queryset(self):
-        account = self.request.account
-
         salon_uid = self.kwargs.get("salon_uid")
-        salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+        salon = get_object_or_404(Salon, uid=salon_uid)
 
-        queryset = Product.objects.filter(salon=salon, account=account)
+        queryset = Product.objects.filter(salon=salon)
 
         return queryset

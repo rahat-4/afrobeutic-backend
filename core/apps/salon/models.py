@@ -102,7 +102,7 @@ class Salon(BaseModel):
     )
 
     def __str__(self):
-        return f"{self.name} - {self.city} - Owner: {self.account.name}"
+        return f"{self.uid} - {self.name} - {self.city} - Owner: {self.account.name}"
 
 
 class OpeningHours(BaseModel):

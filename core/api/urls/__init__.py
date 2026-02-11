@@ -12,6 +12,7 @@ urlpatterns = [
     path("/admin", include("api.urls.admin")),
     path("/subscriptions", include("api.urls.subscriptions")),
     path("/consumers", include("api.urls.consumers")),
+    path("/public", include("api.urls.public")),
     path("/webhooks", include("api.urls.webhooks")),
     path("/filters", include("api.urls.filters")),
 ]
