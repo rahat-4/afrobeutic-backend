@@ -1,4 +1,3 @@
-import jwt
 import random
 from datetime import timedelta
 from io import BytesIO
@@ -7,12 +6,9 @@ from decimal import Decimal
 from weasyprint import HTML
 
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from django.conf import settings
+
 from django.utils import timezone
 from django.template.loader import render_to_string
-
-from rest_framework.authentication import BaseAuthentication
-from rest_framework.exceptions import AuthenticationFailed
 
 
 class EmailVerificationTokenGenerator(PasswordResetTokenGenerator):

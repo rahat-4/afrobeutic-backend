@@ -24,6 +24,8 @@ class CurrentAccountMiddleware(MiddlewareMixin):
         re.compile(r"^/api/public/salons/[0-9a-fA-F-]{36}/?$"),
         re.compile(r"^/api/filters/[0-9a-fA-F-]{36}/services/?$"),
         re.compile(r"^/api/filters/[0-9a-fA-F-]{36}/products/?$"),
+        re.compile(r"^/api/filters/service-categories/?$"),
+        re.compile(r"^/api/filters/service-sub-categories/?$"),
         re.compile(r"^/api/public/booking/?$"),
         # Consumers
         re.compile(r"^/api/auth/send-otp/?$"),

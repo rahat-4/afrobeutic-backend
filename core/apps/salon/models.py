@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -74,6 +75,21 @@ class Salon(BaseModel):
     # address
     address_one = models.CharField(max_length=255)
     address_two = models.CharField(max_length=255, blank=True, null=True)
+    latitude = models.DecimalField(
+        max_digits=17,  # -90.xxxxxxxxxxxxx
+        decimal_places=14,
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+    )
+    longitude = models.DecimalField(
+        max_digits=18,  # -180.xxxxxxxxxxxxx
+        decimal_places=14,
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+    )
+
     city = models.CharField(max_length=100)
     postal_code = models.CharField(max_length=20)
     country = CountryField()

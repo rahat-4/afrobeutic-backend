@@ -1,12 +1,21 @@
 from rest_framework.generics import ListAPIView, get_object_or_404
 from rest_framework.exceptions import ValidationError
 
-from apps.salon.models import Employee, Salon, Service, Product
+from apps.salon.models import (
+    Employee,
+    Salon,
+    Service,
+    Product,
+    ServiceCategory,
+    ServiceSubCategory,
+)
 
 from ..serializers.filters import (
     FilterEmployeeSerializer,
     FilterServiceSerializer,
     FilterProductSerializer,
+    FilterServiceCategorySerializer,
+    FilterServiceSubCategorySerializer,
 )
 
 
@@ -51,3 +60,18 @@ class FilterProductListView(ListAPIView):
         queryset = Product.objects.filter(salon=salon)
 
         return queryset
+
+
+class FilterServiceCategoryListView(ListAPIView):
+    queryset = ServiceCategory.objects.all()
+    serializer_class = FilterServiceCategorySerializer
+    pagination_class = None
+    permission_classes = []
+
+
+class FilterServiceSubCategoryListView(ListAPIView):
+    queryset = ServiceSubCategory.objects.all()
+    serializer_class = FilterServiceSubCategorySerializer
+    pagination_class = None
+    permission_classes = []
+    filterset_fields = ["category__name"]
