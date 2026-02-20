@@ -75,6 +75,16 @@ class Salon(BaseModel):
     # address
     formatted_address = models.TextField(blank=True, null=True)
     google_place_id = models.CharField(max_length=255, blank=True, null=True)
+    latitude = models.DecimalField(
+        max_digits=17,  # -90.xxxxxxxxxxxxx
+        decimal_places=14,
+        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+    )
+    longitude = models.DecimalField(
+        max_digits=18,  # -180.xxxxxxxxxxxxx
+        decimal_places=14,
+        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+    )
     location = gis_models.PointField(geography=True, srid=4326, spatial_index=True)
 
     city = models.CharField(max_length=100)

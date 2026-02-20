@@ -66,8 +66,6 @@ class SalonSerializer(serializers.ModelSerializer):
         child=serializers.ChoiceField(choices=AdditionalServiceType.choices),
         required=False,
     )
-    latitude = serializers.FloatField()
-    longitude = serializers.FloatField()
 
     class Meta:
         model = Salon
@@ -102,13 +100,6 @@ class SalonSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-
-    def to_representation(self, instance):
-        rep = super().to_representation(instance)
-        rep["latitude"] = instance.location.y if instance.location else None
-        rep["longitude"] = instance.location.x if instance.location else None
-
-        return rep
 
     def validate(self, attrs):
         opening_hours = attrs.get("opening_hours", [])
@@ -167,8 +158,16 @@ class SalonSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         with transaction.atomic():
-            lat = validated_data.pop("latitude")
-            lng = validated_data.pop("longitude")
+            lat = validated_data.get("latitude")
+            lng = validated_data.get("longitude")
+
+            try:
+                lat = float(lat)
+                lng = float(lng)
+            except (TypeError, ValueError):
+                raise serializers.ValidationError(
+                    "Latitude and longitude must be numbers"
+                )
             opening_hours = validated_data.pop("opening_hours", [])
 
             validated_data["location"] = Point(lng, lat, srid=4326)
@@ -181,10 +180,17 @@ class SalonSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         with transaction.atomic():
-            lat = validated_data.pop("latitude", None)
-            lng = validated_data.pop("longitude", None)
+            lat = validated_data.get("latitude", None)
+            lng = validated_data.get("longitude", None)
 
             if lat is not None and lng is not None:
+                try:
+                    lat = float(lat)
+                    lng = float(lng)
+                except (TypeError, ValueError):
+                    raise serializers.ValidationError(
+                        "Latitude and longitude must be numbers"
+                    )
                 instance.location = Point(lng, lat, srid=4326)
 
             opening_hours = validated_data.pop("opening_hours", [])

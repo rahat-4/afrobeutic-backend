@@ -146,9 +146,6 @@ class AdminAccountSerializer(serializers.ModelSerializer):
 
 
 class AdminSalonSerializer(serializers.ModelSerializer):
-    latitude = serializers.SerializerMethodField()
-    longitude = serializers.SerializerMethodField()
-
     class Meta:
         model = Salon
         fields = [
@@ -180,12 +177,6 @@ class AdminSalonSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-
-    def get_latitude(self, obj):
-        return obj.location.y if obj.location else None
-
-    def get_longitude(self, obj):
-        return obj.location.x if obj.location else None
 
 
 class AdminCustomerSerializer(serializers.ModelSerializer):
