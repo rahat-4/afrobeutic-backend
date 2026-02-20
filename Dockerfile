@@ -25,6 +25,9 @@ RUN apt-get update && apt-get install -y \
     # Optional: fonts for better PDF rendering
     fonts-liberation \
     fontconfig \
+    gdal-bin \
+    libgdal-dev \
+    libproj-dev \
  && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies

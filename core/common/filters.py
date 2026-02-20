@@ -1,6 +1,8 @@
-from zoneinfo import ZoneInfo
 from datetime import timedelta, datetime
 
+from django.contrib.gis.geos import Point
+from django.contrib.gis.db.models.functions import Distance
+from django.contrib.gis.measure import D
 from django_filters import rest_framework as filters
 import django_filters
 from django.utils import timezone
@@ -138,6 +140,9 @@ class BookingDateFilter(filters.FilterSet):
         return queryset
 
 
+# /salons/?latitude=23.8103&longitude=90.4125
+# /salons/?latitude=23.8103&longitude=90.4125&radius_kilometer=10
+# /salons/?latitude=23.8103&longitude=90.4125&date=2026-02-20&time=14:00
 class SalonAvailabilityFilter(django_filters.FilterSet):
     city = django_filters.CharFilter(field_name="city", lookup_expr="iexact")
     category = django_filters.UUIDFilter(
@@ -146,6 +151,12 @@ class SalonAvailabilityFilter(django_filters.FilterSet):
     sub_category = django_filters.UUIDFilter(
         field_name="salon_services__sub_category__uid", lookup_expr="exact"
     )
+    latitude = django_filters.NumberFilter(method="filter_by_location")
+    longitude = django_filters.NumberFilter(method="filter_by_location")
+    radius_kilometer = django_filters.NumberFilter(method="filter_by_location")
+
+    date = django_filters.DateFilter(method="date_filter")
+    time = django_filters.TimeFilter(method="time_filter")
 
     class Meta:
         model = Salon
@@ -158,9 +169,72 @@ class SalonAvailabilityFilter(django_filters.FilterSet):
             "city",
             "category",
             "sub_category",
+            "latitude",
+            "longitude",
+            "radius_kilometer",
+            "date",
+            "time",
         ]
 
     @property
     def qs(self):
         parent = super().qs
         return parent.distinct()
+
+    def filter_by_location(self, queryset, name, value):
+        lat = self.data.get("latitude")
+        lon = self.data.get("longitude")
+
+        if not lat or not lon:
+            return queryset
+
+        radius = float(self.data.get("radius_kilometer", 3))
+        radius = min(radius, 20)
+
+        user_location = Point(float(lon), float(lat), srid=4326)
+
+        queryset = (
+            queryset.annotate(distance=Distance("location", user_location))
+            .filter(location__distance_lte=(user_location, D(km=radius)))
+            .order_by("distance")
+        )
+
+        return queryset
+
+    def date_filter(self, queryset, name, value):
+        if not value:
+            return queryset
+
+        day_name = value.strftime("%A").upper()
+
+        return queryset.filter(
+            opening_hours__day=day_name,
+            opening_hours__is_closed=False,
+        ).distinct()
+
+    def time_filter(self, queryset, name, value):
+        if not value:
+            return queryset
+
+        # If date exists → use that day's opening hours
+        date_value = self.data.get("date")
+
+        if not date_value:
+            return queryset  # ignore time if no date
+
+        if date_value:
+            try:
+                date_obj = datetime.strptime(date_value, "%Y-%m-%d")
+                day_name = date_obj.strftime("%A").upper()
+
+                queryset = queryset.filter(
+                    opening_hours__day=day_name,
+                    opening_hours__is_closed=False,
+                )
+            except ValueError:
+                pass
+
+        return queryset.filter(
+            opening_hours__opening_time__lte=value,
+            opening_hours__closing_time__gte=value,
+        ).distinct()

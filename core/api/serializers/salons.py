@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, time
 from decimal import Decimal
 
+from django.contrib.gis.geos import Point
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 
@@ -65,6 +66,8 @@ class SalonSerializer(serializers.ModelSerializer):
         child=serializers.ChoiceField(choices=AdditionalServiceType.choices),
         required=False,
     )
+    latitude = serializers.FloatField()
+    longitude = serializers.FloatField()
 
     class Meta:
         model = Salon
@@ -79,8 +82,10 @@ class SalonSerializer(serializers.ModelSerializer):
             "bridal_makeup_service_types",
             "salon_type",
             "additional_service_types",
-            "address_one",
-            "address_two",
+            "formatted_address",
+            "google_place_id",
+            "latitude",
+            "longitude",
             "city",
             "postal_code",
             "country",
@@ -97,6 +102,13 @@ class SalonSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep["latitude"] = instance.location.y if instance.location else None
+        rep["longitude"] = instance.location.x if instance.location else None
+
+        return rep
 
     def validate(self, attrs):
         opening_hours = attrs.get("opening_hours", [])
@@ -155,7 +167,12 @@ class SalonSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         with transaction.atomic():
+            lat = validated_data.pop("latitude")
+            lng = validated_data.pop("longitude")
             opening_hours = validated_data.pop("opening_hours", [])
+
+            validated_data["location"] = Point(lng, lat, srid=4326)
+
             salon = Salon.objects.create(**validated_data)
 
             for opening_hour in opening_hours:
@@ -164,6 +181,12 @@ class SalonSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         with transaction.atomic():
+            lat = validated_data.pop("latitude", None)
+            lng = validated_data.pop("longitude", None)
+
+            if lat is not None and lng is not None:
+                instance.location = Point(lng, lat, srid=4326)
+
             opening_hours = validated_data.pop("opening_hours", [])
 
             for attr, value in validated_data.items():

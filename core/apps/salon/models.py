@@ -1,5 +1,5 @@
 from datetime import timedelta
-
+from django.contrib.gis.db import models as gis_models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.contrib.auth import get_user_model
@@ -73,22 +73,9 @@ class Salon(BaseModel):
     )
 
     # address
-    address_one = models.CharField(max_length=255)
-    address_two = models.CharField(max_length=255, blank=True, null=True)
-    latitude = models.DecimalField(
-        max_digits=17,  # -90.xxxxxxxxxxxxx
-        decimal_places=14,
-        blank=True,
-        null=True,
-        validators=[MinValueValidator(-90), MaxValueValidator(90)],
-    )
-    longitude = models.DecimalField(
-        max_digits=18,  # -180.xxxxxxxxxxxxx
-        decimal_places=14,
-        blank=True,
-        null=True,
-        validators=[MinValueValidator(-180), MaxValueValidator(180)],
-    )
+    formatted_address = models.TextField(blank=True, null=True)
+    google_place_id = models.CharField(max_length=255, blank=True, null=True)
+    location = gis_models.PointField(geography=True, srid=4326, spatial_index=True)
 
     city = models.CharField(max_length=100)
     postal_code = models.CharField(max_length=20)

@@ -13,7 +13,7 @@ from common.serializers import (
     ServiceSlimSerializer,
     ProductSlimSerializer,
     MediaSlimSerializer,
-    PricingPlanSlimSerializer
+    PricingPlanSlimSerializer,
 )
 
 from apps.authentication.models import Account, AccountMembership
@@ -146,6 +146,9 @@ class AdminAccountSerializer(serializers.ModelSerializer):
 
 
 class AdminSalonSerializer(serializers.ModelSerializer):
+    latitude = serializers.SerializerMethodField()
+    longitude = serializers.SerializerMethodField()
+
     class Meta:
         model = Salon
         fields = [
@@ -159,8 +162,10 @@ class AdminSalonSerializer(serializers.ModelSerializer):
             "bridal_makeup_service_types",
             "salon_type",
             "additional_service_types",
-            "address_one",
-            "address_two",
+            "formatted_address",
+            "google_place_id",
+            "latitude",
+            "longitude",
             "city",
             "postal_code",
             "country",
@@ -175,6 +180,12 @@ class AdminSalonSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def get_latitude(self, obj):
+        return obj.location.y if obj.location else None
+
+    def get_longitude(self, obj):
+        return obj.location.x if obj.location else None
 
 
 class AdminCustomerSerializer(serializers.ModelSerializer):
@@ -379,7 +390,7 @@ class AdminPricingPlanSerializer(serializers.ModelSerializer):
             "is_active",
             "description",
         ]
-    
+
     def validate_name(self, value):
         """
         - Normalize name (strip + title)
@@ -388,9 +399,7 @@ class AdminPricingPlanSerializer(serializers.ModelSerializer):
         """
         normalized_value = value.strip().title()
 
-        qs = PricingPlan.objects.filter(
-            name__iexact=normalized_value
-        )
+        qs = PricingPlan.objects.filter(name__iexact=normalized_value)
 
         # Exclude current instance on update
         if self.instance:
@@ -402,6 +411,7 @@ class AdminPricingPlanSerializer(serializers.ModelSerializer):
             )
 
         return normalized_value
+
 
 class AdminSubscriptionGetSerializer(serializers.ModelSerializer):
     pricing_plan = PricingPlanSlimSerializer(read_only=True)
@@ -422,6 +432,7 @@ class AdminSubscriptionGetSerializer(serializers.ModelSerializer):
             "account",
             "created_at",
         ]
+
 
 class AdminSubscriptionPostSerializer(serializers.ModelSerializer):
     account = serializers.SlugRelatedField(
