@@ -1454,10 +1454,6 @@ class SalonWhatsappView(APIView):
 
     permission_classes = []
 
-    def dispatch(self, request, *args, **kwargs):
-        print("HTTP METHOD:", request.method)
-        return super().dispatch(request, *args, **kwargs)
-
     def get(self, request, salon_uid, *args, **kwargs):
         account = request.account
         salon = get_object_or_404(Salon, uid=salon_uid, account=account)

@@ -146,6 +146,10 @@ class CustomerBookingSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         rep = super().to_representation(instance)
 
+        rep["salon"] = {
+            "uid": instance.salon.uid,
+            "name": instance.salon.name,
+        }
         rep["services"] = BookingServicesSlimSerializer(
             instance.services.all(), many=True
         ).data
@@ -192,14 +196,6 @@ class CustomerBookingSerializer(serializers.ModelSerializer):
             "completed_at",
             "images",
         ]
-
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        representation["salon"] = {
-            "uid": instance.salon.uid,
-            "name": instance.salon.name,
-        }
-        return representation
 
     def create(self, validated_data):
         salon = validated_data.pop("salon")
