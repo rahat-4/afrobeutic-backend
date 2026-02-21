@@ -60,6 +60,9 @@ class PublicCustomerSerializer(serializers.ModelSerializer):
             "email",
             "phone",
         ]
+        extra_kwargs = {
+            "phone": {"validators": []},
+        }
 
 
 class PublicSalonBookingSerializer(serializers.ModelSerializer):
@@ -115,7 +118,7 @@ class PublicSalonBookingSerializer(serializers.ModelSerializer):
             )
 
             customer_obj, _ = Customer.objects.get_or_create(
-                account=account,
+                # account=account,
                 phone=customer["phone"],
                 defaults={
                     "first_name": customer["first_name"],
@@ -124,6 +127,7 @@ class PublicSalonBookingSerializer(serializers.ModelSerializer):
                     "source": source,
                     "type": CustomerType.CUSTOMER,
                     "salon": validated_data["salon"],
+                    "account": account,
                 },
             )
             validated_data["customer"] = customer_obj

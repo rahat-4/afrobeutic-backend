@@ -2,6 +2,7 @@ from django.http import FileResponse
 
 from rest_framework import status
 from rest_framework.generics import (
+    ListAPIView,
     ListCreateAPIView,
     RetrieveAPIView,
     RetrieveUpdateAPIView,
@@ -31,7 +32,7 @@ class CustomerProfileView(RetrieveUpdateAPIView):
         return self.request.customer
 
 
-class CustomerBookingListView(ListCreateAPIView):
+class CustomerBookingListView(ListAPIView):
     serializer_class = CustomerBookingSerializer
     authentication_classes = [CustomerJWTAuthentication]
     permission_classes = []
@@ -48,7 +49,7 @@ class CustomerBookingListView(ListCreateAPIView):
         serializer.save(customer=self.request.customer)
 
 
-class CustomerBookingDetailView(RetrieveUpdateAPIView):
+class CustomerBookingDetailView(RetrieveAPIView):
     queryset = Booking.objects.all()
     serializer_class = CustomerBookingSerializer
     authentication_classes = [CustomerJWTAuthentication]

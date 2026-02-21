@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, time
 from decimal import Decimal
+from phonenumber_field.modelfields import PhoneNumberField
 
 from django.contrib.gis.geos import Point
 from django.db import transaction
@@ -590,7 +591,6 @@ class SalonChairSerializer(serializers.ModelSerializer):
 
 
 class SalonCustomerSlimSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Customer
         fields = [
@@ -606,6 +606,7 @@ class SalonCustomerSlimSerializer(serializers.ModelSerializer):
 
         extra_kwargs = {
             "source": {"required": False, "allow_null": True},
+            "phone": {"validators": []},
         }
 
     def to_representation(self, instance):
@@ -789,7 +790,7 @@ class SalonBookingSerializer(serializers.ModelSerializer):
             )
 
             customer_obj, _ = Customer.objects.get_or_create(
-                account=validated_data["account"],
+                # account=validated_data["account"],
                 phone=customer["phone"],
                 defaults={
                     "first_name": customer["first_name"],
@@ -798,6 +799,7 @@ class SalonBookingSerializer(serializers.ModelSerializer):
                     "source": source,
                     "type": CustomerType.CUSTOMER,
                     "salon": validated_data["salon"],
+                    "account": account,
                 },
             )
             validated_data["customer"] = customer_obj
@@ -936,7 +938,7 @@ class SalonChairBookingSerializer(serializers.ModelSerializer):
             )
 
             customer_obj, _ = Customer.objects.get_or_create(
-                account=validated_data["account"],
+                # account=validated_data["account"],
                 phone=customer["phone"],
                 defaults={
                     "first_name": customer["first_name"],
@@ -945,6 +947,7 @@ class SalonChairBookingSerializer(serializers.ModelSerializer):
                     "source": source,
                     "type": CustomerType.CUSTOMER,
                     "salon": validated_data["salon"],
+                    "account": account,
                 },
             )
             validated_data["customer"] = customer_obj

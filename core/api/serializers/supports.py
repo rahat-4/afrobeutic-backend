@@ -155,7 +155,7 @@ class CustomerEnquirySerializer(serializers.ModelSerializer):
             )
 
             customer, _ = Customer.objects.get_or_create(
-                account=salon.account,
+                # account=salon.account,
                 phone=phone,
                 defaults={
                     "first_name": first_name,
@@ -163,6 +163,7 @@ class CustomerEnquirySerializer(serializers.ModelSerializer):
                     "email": email,
                     "source": source,
                     "salon": salon,
+                    "account": salon.account,
                 },
             )
 

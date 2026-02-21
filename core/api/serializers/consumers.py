@@ -193,6 +193,14 @@ class CustomerBookingSerializer(serializers.ModelSerializer):
             "images",
         ]
 
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation["salon"] = {
+            "uid": instance.salon.uid,
+            "name": instance.salon.name,
+        }
+        return representation
+
     def create(self, validated_data):
         salon = validated_data.pop("salon")
         services = validated_data.pop("services", [])
