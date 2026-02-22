@@ -26,43 +26,22 @@ class MetaConfig(BaseModel):
     )
 
 
-class TwilioConfig(BaseModel):
+class WhatsappChatbotConfig(BaseModel):
+    chatbot_name = models.CharField(max_length=255, blank=True, null=True)
     sender_sid = models.JSONField(default=dict)
     whatsapp_sender_number = models.CharField(max_length=100)
-    sender_status = models.CharField(max_length=100)
+    status = models.CharField(max_length=100)
 
     # Fk
-    salon = models.OneToOneField(
-        Salon, on_delete=models.CASCADE, related_name="salon_twilio_config"
-    )
-    account = models.ForeignKey(
-        Account, on_delete=models.CASCADE, related_name="account_twilio_configs"
-    )
-
-    def __str__(self):
-        return f"TwilioConfig for Account: {self.sender_sid}"
-
-
-class WhatsappChatbotConfig(BaseModel):
-    status = models.CharField(
-        max_length=20,
-        choices=WhatsappChatbotStatus.choices,
-        default=WhatsappChatbotStatus.ACTIVE,
-    )
-
-    # Foreign Key and OneToOne Relationships
     created_by = models.ForeignKey(
         User,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="created_whatsapp_chatbot_configs",
     )
-    twilio = models.OneToOneField(
-        TwilioConfig,
-        on_delete=models.CASCADE,
-        related_name="twilio_whatsapp_chatbot_configs",
-    )
     salon = models.OneToOneField(
-        Salon, on_delete=models.CASCADE, related_name="salon_whatsapp_chatbot_configs"
+        Salon, on_delete=models.CASCADE, related_name="salon_whatsapp_chatbot_config"
     )
     account = models.ForeignKey(
         Account,
@@ -71,24 +50,28 @@ class WhatsappChatbotConfig(BaseModel):
     )
 
     def __str__(self):
-        return f"WhatsappChatbotConfig for Salon: {self.salon.name} (Status: {self.status})"
+        return f"WhatsappChatbotConfig for Account: {self.account.name }"
 
 
 class WhatsappChatbotMessageLog(BaseModel):
-    content = models.TextField()
+    message = models.TextField()
     media_url = models.URLField(blank=True, null=True)
+    sent_at = models.DateTimeField(auto_now_add=True)
     role = models.CharField(
         max_length=20,
         choices=WhatsappChatbotMessageRole.choices,
     )
-    note = models.TextField(blank=True, null=True)  # Delete it later
 
     # Fk Relationships
     chatbot = models.ForeignKey(
         WhatsappChatbotConfig, on_delete=models.CASCADE, related_name="messages"
     )
     customer = models.ForeignKey(
-        Customer, on_delete=models.CASCADE, related_name="whatsapp_messages"
+        Customer,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="customer_whatsapp_messages",
     )
     admin = models.ForeignKey(
         User,

@@ -8,7 +8,7 @@ class WhatsappChatbotStatus(models.TextChoices):
 
 
 class WhatsappChatbotMessageRole(models.TextChoices):
-    USER = "USER", "User"
+    CUSTOMER = "CUSTOMER", "Customer"
     BOT = "BOT", "Bot"
     ADMIN = "ADMIN", "Admin"
 

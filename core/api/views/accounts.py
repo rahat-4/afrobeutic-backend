@@ -174,9 +174,41 @@ class AccountSubscriptionDetailView(RetrieveUpdateAPIView):
 class AccountMetaConfigView(APIView):
     permission_classes = [IsOwnerOrAdmin]
 
+    def get_crypto_password(self):
+        return config("CRYPTO_PASSWORD")
+
+    def decrypt_meta_config(self, meta_config):
+        crypto_password = self.get_crypto_password()
+        return {
+            "waba_id": decrypt_data(meta_config.waba_id, crypto_password),
+            "account_sid": decrypt_data(meta_config.account_sid, crypto_password),
+            "auth_token": decrypt_data(meta_config.auth_token, crypto_password),
+        }
+
+    def encrypt_meta_config(self, waba_id, account_sid, auth_token):
+        crypto_password = self.get_crypto_password()
+        return {
+            "waba_id": encrypt_data(waba_id, crypto_password),
+            "account_sid": encrypt_data(account_sid, crypto_password),
+            "auth_token": encrypt_data(auth_token, crypto_password),
+        }
+
+    def get(self, request):
+        meta_config = getattr(request.account, "account_meta_config", None)
+
+        if not meta_config:
+            return Response(
+                {"error": "Meta configuration not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(
+            self.decrypt_meta_config(meta_config),
+            status=status.HTTP_200_OK,
+        )
+
     def post(self, request):
         account = request.account
-        crypto_password = config("CRYPTO_PASSWORD")
         waba_id = request.data.get("waba_id")
 
         if not waba_id:
@@ -185,33 +217,44 @@ class AccountMetaConfigView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Prevent duplicate creation
+        if hasattr(account, "account_meta_config"):
+            return Response(
+                {"error": "Meta configuration already exists."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         with transaction.atomic():
             subaccount = create_twilio_subaccount(friendly_name=account.name)
 
-            encrypted_waba_id = encrypt_data(waba_id, crypto_password)
-            encrypted_account_sid = encrypt_data(
-                subaccount["account_sid"], crypto_password
-            )
-            encrypted_auth_token = encrypt_data(
-                subaccount["auth_token"], crypto_password
+            encrypted_data_dict = self.encrypt_meta_config(
+                waba_id=waba_id,
+                account_sid=subaccount["account_sid"],
+                auth_token=subaccount["auth_token"],
             )
 
-            meta_config, created = MetaConfig.objects.get_or_create(
+            MetaConfig.objects.create(
                 account=account,
-                defaults={
-                    "waba_id": encrypted_waba_id,
-                    "account_sid": encrypted_account_sid,
-                    "auth_token": encrypted_auth_token,
-                },
+                **encrypted_data_dict,
             )
 
         return Response(
-            {
-                "message": (
-                    "Meta configuration created."
-                    if created
-                    else "Meta configuration already exists."
-                )
-            },
-            status=status.HTTP_201_CREATED if created else status.HTTP_400_BAD_REQUEST,
+            {"message": "Meta configuration created successfully."},
+            status=status.HTTP_201_CREATED,
+        )
+
+    def delete(self, request):
+        account = request.account
+
+        if not hasattr(account, "account_meta_config"):
+            return Response(
+                {"error": "Meta configuration not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        account.account_meta_config.delete()
+
+        return Response(
+            {"message": "Meta configuration deleted successfully."},
+            status=status.HTTP_200_OK,
         )

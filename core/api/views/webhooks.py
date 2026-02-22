@@ -1,14 +1,22 @@
 import stripe
 from django.conf import settings
+from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 
+from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.billing.utils import handle_payment_failed, handle_payment_success
+from apps.salon.models import Customer
+from apps.thirdparty.models import WhatsappChatbotConfig
+from apps.thirdparty.choices import WhatsappChatbotMessageRole
+
+from common.choices import CategoryType
+from common.utils import get_or_create_category
 
 
 @csrf_exempt
@@ -58,6 +66,61 @@ class WhatsappCallbackView(APIView):
 
     def post(self, request, *args, **kwargs):
         print("request=================================>", request.data)
+        profile_name = request.data.get("ProfileName", "")
+        whatsapp_number = request.data.get("From", "")
+        incoming_message = request.data.get("Body", "")
+        whatsapp_sender_number = request.data.get("To", "")
+
+        if not all([whatsapp_number, incoming_message, whatsapp_sender_number]):
+            print("Missing required fields.")
+            return JsonResponse(
+                {"status": "error", "message": "Missing required fields"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            bot = WhatsappChatbotConfig.objects.filter(
+                whatsapp_sender_number=whatsapp_sender_number
+            ).first()
+            if not bot:
+                print(
+                    f"No chatbot configuration found for number: {whatsapp_sender_number}"
+                )
+                return JsonResponse(
+                    {"status": "error", "message": "Chatbot configuration not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            account = bot.account
+            salon = bot.salon
+            phone = whatsapp_number.replace("whatsapp:", "").strip()
+            first_name = profile_name.split()[0] if profile_name else phone
+            last_name = profile_name.split()[1] if len(profile_name.split()) > 1 else ""
+            source = get_or_create_category(
+                "Whatsapp", account, category_type=CategoryType.CUSTOMER_SOURCE
+            )
+            # Get or create customer based on the incoming WhatsApp message
+            customer, _ = Customer.objects.get_or_create(
+                phone=phone,
+                defaults={
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "source": source,
+                    "account": account,
+                    "salon": salon,
+                },
+            )
+
+            # Save message history to database
+            bot.messages.create(
+                message=incoming_message,
+                role=WhatsappChatbotMessageRole.CUSTOMER,
+                customer=customer,
+            )
+
+        except Exception as e:
+            print(f"Error processing webhook: {e}")
+
         return Response({"status": "ok"})
 
 

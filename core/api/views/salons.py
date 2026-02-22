@@ -8,6 +8,7 @@ from decouple import config
 from twilio.rest import Client
 from twilio.rest.messaging.v2 import ChannelsSenderList
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Prefetch, Count, Sum, F, DecimalField, Q
 from django.db.models.functions import ExtractWeekDay, ExtractHour
@@ -39,7 +40,7 @@ from apps.salon.models import (
     Employee,
 )
 
-from apps.thirdparty.models import TwilioConfig
+from apps.thirdparty.models import WhatsappChatbotConfig
 from apps.thirdparty.utils import create_twilio_subaccount
 
 from common.crypto import encrypt_data, decrypt_data
@@ -1452,127 +1453,210 @@ class SalonWhatsappView(APIView):
     Receives Embedded Signup result from frontend and registers the sender with Twilio.
     """
 
-    permission_classes = []
+    permission_classes = [IsOwnerOrAdmin]
+
+    # -------------------------
+    # Helpers
+    # -------------------------
+
+    def _get_crypto_password(self):
+        return config("CRYPTO_PASSWORD")
+
+    def _get_salon(self, request, salon_uid):
+        return get_object_or_404(
+            Salon,
+            uid=salon_uid,
+            account=request.account,
+        )
+
+    def _get_meta_credentials(self, account):
+        meta_config = getattr(account, "account_meta_config", None)
+        if not meta_config:
+            return None
+
+        crypto_password = self._get_crypto_password()
+
+        return {
+            "account_sid": decrypt_data(meta_config.account_sid, crypto_password),
+            "auth_token": decrypt_data(meta_config.auth_token, crypto_password),
+            "waba_id": decrypt_data(meta_config.waba_id, crypto_password),
+        }
+
+    def _get_twilio_client(self, credentials):
+        return Client(
+            credentials["account_sid"],
+            credentials["auth_token"],
+        )
+
+    # -------------------------
+    # GET
+    # -------------------------
 
     def get(self, request, salon_uid, *args, **kwargs):
-        account = request.account
-        salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+        salon = self._get_salon(request, salon_uid)
 
-        twilio_config = TwilioConfig.objects.filter(
-            salon=salon, account=account
-        ).first()
+        config_obj = (
+            WhatsappChatbotConfig.objects.filter(
+                salon=salon,
+                account=request.account,
+            )
+            .select_related("created_by")
+            .first()
+        )
 
-        if not twilio_config:
+        if not config_obj:
             return Response(
                 {"error": "No WhatsApp sender registered for this salon"},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        whatsapp_sender_number = twilio_config.whatsapp_sender_number
-
         return Response(
             {
-                "salon": salon.name,
-                "whatsapp_sender_number": whatsapp_sender_number,
-                "sender_status": twilio_config.sender_status,
+                "chatbot_name": config_obj.chatbot_name,
+                "status": config_obj.status,
+                "whatsapp_sender_number": config_obj.whatsapp_sender_number,
+                "created_by": config_obj.created_by.get_full_name(),
             },
             status=status.HTTP_200_OK,
         )
 
+    # -------------------------
+    # POST
+    # -------------------------
+
     def post(self, request, salon_uid, *args, **kwargs):
+        salon = self._get_salon(request, salon_uid)
 
-        with transaction.atomic():
-            print("------------------------------->", request.data)
-            whatsapp_sender_number = request.data.get("whatsapp_sender_number")
-
-            if not whatsapp_sender_number:
-                return Response(
-                    {"error": "Missing whatsapp_sender_number"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Create a subaccount for the salon
-            account = request.account
-            salon = get_object_or_404(Salon, uid=salon_uid, account=account)
-            meta_config = account.account_meta_config
-
-            crypto_password = config("CRYPTO_PASSWORD")
-            auth_token = decrypt_data(meta_config.auth_token, crypto_password)
-            account_sid = decrypt_data(meta_config.account_sid, crypto_password)
-            waba_id = decrypt_data(meta_config.waba_id, crypto_password)
-
-            client = Client(account_sid, auth_token)
-            # client = Client(account_sid, auth_token)
-            sender = client.messaging.v2.channels_senders.create(
-                messaging_v2_channels_sender_requests_create=ChannelsSenderList.MessagingV2ChannelsSenderRequestsCreate(
-                    {
-                        "sender_id": f"whatsapp:{whatsapp_sender_number}",
-                        "configuration": ChannelsSenderList.MessagingV2ChannelsSenderConfiguration(
-                            {
-                                "waba_id": waba_id,
-                            }
-                        ),
-                        "profile": ChannelsSenderList.MessagingV2ChannelsSenderProfile(
-                            {"name": salon.name[:64]}
-                        ),
-                        "webhook": ChannelsSenderList.MessagingV2ChannelsSenderWebhook(
-                            {
-                                "callback_url": "https://api.afrobeutic.com/api/webhooks/whatsapp-callback",
-                                "callback_method": "POST",
-                                "fallback_url": "https://api.afrobeutic.com/api/webhooks/whatsapp-fallback",
-                                "fallback_method": "POST",
-                                "status_callback_url": "https://api.afrobeutic.com/api/webhooks/whatsapp-callback-status",
-                                "status_callback_method": "POST",
-                            }
-                        ),
-                    }
-                )
-            )
-
-            # # Store credentials in the database
-            encrypt_sender_sid = encrypt_data(sender.sid, crypto_password)
-
-            twilio_config = TwilioConfig.objects.create(
-                sender_sid=encrypt_sender_sid,
-                whatsapp_sender_number=f"whatsapp:{whatsapp_sender_number}",
-                sender_status=sender.status,
-                salon=salon,
-                account=account,
-            )
-            print("-------------------------------> Subaccount created:", twilio_config)
-
+        if WhatsappChatbotConfig.objects.filter(
+            salon=salon,
+            account=request.account,
+        ).exists():
             return Response(
-                {
-                    "message": "WhatsApp sender registered successfully",
-                    "salon": salon.name,
-                    "sender_status": sender.status,
-                },
-                status=status.HTTP_201_CREATED,
+                {"error": "WhatsApp sender already registered for this salon"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
+
+        print("Received request to register WhatsApp sender for salon:", salon.name)
+
+        whatsapp_sender_number = request.data.get("whatsapp_sender_number")
+        if not whatsapp_sender_number:
+            return Response(
+                {"error": "Missing whatsapp_sender_number"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        print("WhatsApp sender number from request:", whatsapp_sender_number)
+
+        credentials = self._get_meta_credentials(request.account)
+        if not credentials:
+            return Response(
+                {"error": "Meta configuration not found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        client = self._get_twilio_client(credentials)
+
+        print("Registering WhatsApp sender with Twilio...")
+
+        try:
+            with transaction.atomic():
+                sender = client.messaging.v2.channels_senders.create(
+                    messaging_v2_channels_sender_requests_create=ChannelsSenderList.MessagingV2ChannelsSenderRequestsCreate(
+                        {
+                            "sender_id": f"whatsapp:{whatsapp_sender_number}",
+                            "configuration": ChannelsSenderList.MessagingV2ChannelsSenderConfiguration(
+                                {
+                                    "waba_id": credentials["waba_id"],
+                                }
+                            ),
+                            "profile": ChannelsSenderList.MessagingV2ChannelsSenderProfile(
+                                {"name": salon.name[:64]}
+                            ),
+                            "webhook": ChannelsSenderList.MessagingV2ChannelsSenderWebhook(
+                                {
+                                    "callback_url": settings.WHATSAPP_CALLBACK_URL,
+                                    "callback_method": "POST",
+                                    "fallback_url": settings.WHATSAPP_FALLBACK_URL,
+                                    "fallback_method": "POST",
+                                    "status_callback_url": settings.WHATSAPP_STATUS_CALLBACK_URL,
+                                    "status_callback_method": "POST",
+                                }
+                            ),
+                        }
+                    )
+                )
+
+                encrypted_sender_sid = encrypt_data(
+                    sender.sid,
+                    self._get_crypto_password(),
+                )
+
+                config_obj = WhatsappChatbotConfig.objects.create(
+                    chatbot_name=request.data.get("chatbot_name", salon.name[:64]),
+                    sender_sid=encrypted_sender_sid,
+                    whatsapp_sender_number=f"whatsapp:{whatsapp_sender_number}",
+                    status=sender.status,
+                    created_by=request.user,
+                    salon=salon,
+                    account=request.account,
+                )
+
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {
+                "message": "WhatsApp sender registered successfully",
+                "chatbot_name": config_obj.chatbot_name,
+                "status": config_obj.status,
+                "whatsapp_sender_number": config_obj.whatsapp_sender_number,
+                "created_by": config_obj.created_by.get_full_name(),
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    # -------------------------
+    # DELETE
+    # -------------------------
 
     def delete(self, request, salon_uid):
-        with transaction.atomic():
-            account = request.account
-            salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+        salon = self._get_salon(request, salon_uid)
 
-            meta_config = account.account_meta_config
-            account_sid = decrypt_data(
-                meta_config.account_sid, config("CRYPTO_PASSWORD")
-            )
-            auth_token = decrypt_data(meta_config.auth_token, config("CRYPTO_PASSWORD"))
+        config_obj = get_object_or_404(
+            WhatsappChatbotConfig,
+            salon=salon,
+            account=request.account,
+        )
 
-            twilio_config = get_object_or_404(
-                TwilioConfig, salon=salon, account=account
-            )
-            sender_sid = decrypt_data(
-                twilio_config.sender_sid, config("CRYPTO_PASSWORD")
-            )
-            client = Client(account_sid, auth_token)
-
-            client.messaging.v2.channels_senders(sender_sid).delete()
-            twilio_config.delete()
-
+        credentials = self._get_meta_credentials(request.account)
+        if not credentials:
             return Response(
-                {"message": "WhatsApp configuration deleted successfully"},
-                status=status.HTTP_204_NO_CONTENT,
+                {"error": "Meta configuration not found"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
+
+        client = self._get_twilio_client(credentials)
+
+        sender_sid = decrypt_data(
+            config_obj.sender_sid,
+            self._get_crypto_password(),
+        )
+
+        try:
+            with transaction.atomic():
+                client.messaging.v2.channels_senders(sender_sid).delete()
+                config_obj.delete()
+
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {"message": "WhatsApp configuration deleted successfully"},
+            status=status.HTTP_204_NO_CONTENT,
+        )
