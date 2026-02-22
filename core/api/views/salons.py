@@ -1501,10 +1501,6 @@ class SalonWhatsappView(APIView):
             account_sid = decrypt_data(meta_config.account_sid, crypto_password)
             waba_id = decrypt_data(meta_config.waba_id, crypto_password)
 
-            print("-------------------------------> Account SID:", account_sid)
-            print("-------------------------------> Auth Token:", auth_token)
-            print("-------------------------------> WABA ID:", waba_id)
-
             client = Client(account_sid, auth_token)
             # client = Client(account_sid, auth_token)
             sender = client.messaging.v2.channels_senders.create(
@@ -1521,11 +1517,11 @@ class SalonWhatsappView(APIView):
                         ),
                         "webhook": ChannelsSenderList.MessagingV2ChannelsSenderWebhook(
                             {
-                                "callback_url": "https://api.afrobeutic.com/webhooks/whatsapp-callback",
+                                "callback_url": "https://api.afrobeutic.com/api/webhooks/whatsapp-callback",
                                 "callback_method": "POST",
-                                "fallback_url": "https://api.afrobeutic.com/webhooks/whatsapp-fallback",
+                                "fallback_url": "https://api.afrobeutic.com/api/webhooks/whatsapp-fallback",
                                 "fallback_method": "POST",
-                                "status_callback_url": "https://api.afrobeutic.com/webhooks/whatsapp-callback-status",
+                                "status_callback_url": "https://api.afrobeutic.com/api/webhooks/whatsapp-callback-status",
                                 "status_callback_method": "POST",
                             }
                         ),

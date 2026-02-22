@@ -45,8 +45,12 @@ class CurrentAccountMiddleware(MiddlewareMixin):
         # Media and static files
         re.compile(r"^/media/.*$"),
         re.compile(r"^/static/.*$"),
-        # Stripe webhook
-        re.compile(r"^/api/webhook/stripe/?$"),
+        # Stripe and Whatsapp webhook
+        re.compile(r"^/api/webhooks/.*$"),
+        # re.compile(r"^/api/webhooks/stripe/?$"),
+        # re.compile(r"^/api/webhooks/whatsapp-callback/?$"),
+        # re.compile(r"^/api/webhooks/whatsapp-fallback/?$"),
+        # re.compile(r"^/api/webhooks/whatsapp-callback-status/?$"),
     ]
 
     def is_excluded_path(self, path):

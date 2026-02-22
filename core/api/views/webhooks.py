@@ -54,13 +54,17 @@ def stripe_webhook(request):
 
 @method_decorator(csrf_exempt, name="dispatch")
 class WhatsappCallbackView(APIView):
+    permission_classes = []
+
     def post(self, request, *args, **kwargs):
-        print("request=================================>", request)
+        print("request=================================>", request.data)
         return Response({"status": "ok"})
 
 
 @method_decorator(csrf_exempt, name="dispatch")
 class WhatsappStatusCallbackView(APIView):
+    permission_classes = []
+
     def post(self, request, *args, **kwargs):
         print("request=================================>", request)
         return Response({"status": "ok"})
@@ -68,6 +72,8 @@ class WhatsappStatusCallbackView(APIView):
 
 @method_decorator(csrf_exempt, name="dispatch")
 class WhatsappFallbackView(APIView):
+    permission_classes = []
+
     def post(self, request, *args, **kwargs):
         print("request=================================>", request)
         return Response({"status": "ok"})
