@@ -198,8 +198,8 @@ class AccountMetaConfigView(APIView):
 
         if not meta_config:
             return Response(
-                {"error": "Meta configuration not found."},
-                status=status.HTTP_404_NOT_FOUND,
+                {"detail": "Meta configuration not available."},
+                status=status.HTTP_200_OK,
             )
 
         return Response(

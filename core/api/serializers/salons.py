@@ -67,6 +67,8 @@ class SalonSerializer(serializers.ModelSerializer):
         child=serializers.ChoiceField(choices=AdditionalServiceType.choices),
         required=False,
     )
+    latitude = serializers.CharField(write_only=True)
+    longitude = serializers.CharField(write_only=True)
 
     class Meta:
         model = Salon
@@ -159,8 +161,8 @@ class SalonSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         with transaction.atomic():
-            lat = validated_data.get("latitude")
-            lng = validated_data.get("longitude")
+            lat = validated_data.pop("latitude")
+            lng = validated_data.pop("longitude")
 
             try:
                 lat = float(lat)

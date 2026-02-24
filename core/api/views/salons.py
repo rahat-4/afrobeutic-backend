@@ -3,6 +3,7 @@ from datetime import datetime
 from datetime import timedelta
 from decimal import Decimal
 from decouple import config
+from openai import OpenAI
 
 # Register whatsapp sender on Twilio
 from twilio.rest import Client
@@ -41,7 +42,7 @@ from apps.salon.models import (
 )
 
 from apps.thirdparty.models import WhatsappChatbotConfig
-from apps.thirdparty.utils import create_twilio_subaccount
+from apps.thirdparty.gpt_assistants import create_assistant
 
 from common.crypto import encrypt_data, decrypt_data
 from common.filters import BookingDateFilter
@@ -1506,8 +1507,8 @@ class SalonWhatsappView(APIView):
 
         if not config_obj:
             return Response(
-                {"error": "No WhatsApp sender registered for this salon"},
-                status=status.HTTP_404_NOT_FOUND,
+                {"detail": "No WhatsApp sender registered for this salon"},
+                status=status.HTTP_200_OK,
             )
 
         return Response(
@@ -1532,7 +1533,7 @@ class SalonWhatsappView(APIView):
             account=request.account,
         ).exists():
             return Response(
-                {"error": "WhatsApp sender already registered for this salon"},
+                {"detail": "WhatsApp sender already registered for this salon"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -1591,6 +1592,15 @@ class SalonWhatsappView(APIView):
                     self._get_crypto_password(),
                 )
 
+                # Create Assistant
+                # client = OpenAI(api_key=settings.OPENAI_API_KEY)
+                # assistant = create_assistant(
+                #     client,
+                #     f"{organization.name} whatsapp reservation assistant with sales level 1",
+                #     sales_level_one_assistant_instruction(organization.name, currency),
+                #     function_tools(),
+                # )
+
                 config_obj = WhatsappChatbotConfig.objects.create(
                     chatbot_name=request.data.get("chatbot_name", salon.name[:64]),
                     sender_sid=encrypted_sender_sid,
@@ -1599,6 +1609,7 @@ class SalonWhatsappView(APIView):
                     created_by=request.user,
                     salon=salon,
                     account=request.account,
+                    # assistant_id=assistant.id,
                 )
 
         except Exception as e:

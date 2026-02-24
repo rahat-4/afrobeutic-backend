@@ -29,6 +29,7 @@ class MetaConfig(BaseModel):
 class WhatsappChatbotConfig(BaseModel):
     chatbot_name = models.CharField(max_length=255, blank=True, null=True)
     sender_sid = models.JSONField(default=dict)
+    assistant_id = models.JSONField(default=dict, blank=True, null=True)
     whatsapp_sender_number = models.CharField(max_length=100)
     status = models.CharField(max_length=100)
 
@@ -80,3 +81,6 @@ class WhatsappChatbotMessageLog(BaseModel):
         blank=True,
         related_name="admin_whatsapp_messages",
     )
+
+    class Meta:
+        ordering = ["sent_at"]

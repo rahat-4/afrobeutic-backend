@@ -14,6 +14,8 @@ from apps.salon.choices import BookingStatus, CustomerType, SalonStatus
 
 
 class PublicSalonSerializer(serializers.ModelSerializer):
+    latitude = serializers.SerializerMethodField()
+    longitude = serializers.SerializerMethodField()
     opening_hours = OpeningHoursSlimSerializer(many=True, read_only=True)
 
     class Meta:
@@ -49,6 +51,16 @@ class PublicSalonSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def get_latitude(self, obj):
+        if obj.location:
+            return obj.location.y
+        return None
+
+    def get_longitude(self, obj):
+        if obj.location:
+            return obj.location.x
+        return None
 
 
 class PublicCustomerSerializer(serializers.ModelSerializer):
