@@ -243,7 +243,11 @@ def reschedule_reservation(
             booking_id=booking_id,
             salon=salon,
             customer=customer,
-            status__in=[BookingStatus.PLACED, BookingStatus.CONFIRMED],
+            status__in=[
+                BookingStatus.PLACED,
+                BookingStatus.INPROGRESS,
+                BookingStatus.RESCHEDULED,
+            ],
         )
     except Booking.DoesNotExist:
         return _err(
@@ -279,7 +283,11 @@ def get_customer_bookings(
     else:
         # Default: show upcoming active bookings
         qs = qs.filter(
-            status__in=[BookingStatus.PLACED, BookingStatus.CONFIRMED],
+            status__in=[
+                BookingStatus.PLACED,
+                BookingStatus.INPROGRESS,
+                BookingStatus.RESCHEDULED,
+            ],
             booking_date__gte=date.today(),
         )
 

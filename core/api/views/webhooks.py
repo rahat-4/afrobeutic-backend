@@ -215,7 +215,7 @@ class WhatsappStatusCallbackView(APIView):
     permission_classes = []
 
     def post(self, request, *args, **kwargs):
-        print("request=================================>", request.data)
+        # print("request=================================>", request.data)
         return Response({"status": "ok"})
 
 

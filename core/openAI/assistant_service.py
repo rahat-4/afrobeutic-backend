@@ -1,5 +1,8 @@
 import logging
 import time
+import pytz
+from datetime import datetime
+from timezonefinder import TimezoneFinder
 
 from openai import OpenAI
 
@@ -12,6 +15,55 @@ logger = logging.getLogger(__name__)
 
 client = OpenAI()  # reads OPENAI_API_KEY from environment
 
+
+def get_runtime_context(salon: Salon) -> str:
+    """
+    Returns a formatted runtime context string for the salon,
+    including current date, time, and timezone based on its location.
+    This can be sent as a system message or additional_instructions
+    to the OpenAI assistant.
+    """
+
+    # Default timezone in case location fails
+    default_timezone = "Asia/Dubai"
+
+    try:
+        # Get latitude and longitude from salon location PointField
+        lat = salon.location.y
+        lng = salon.location.x
+
+        tf = TimezoneFinder()
+        timezone_str = tf.timezone_at(lat=lat, lng=lng)
+
+        if timezone_str is None:
+            timezone_str = default_timezone
+
+    except Exception:
+        timezone_str = default_timezone
+
+    # Current date and time in the salon's timezone
+    tz = pytz.timezone(timezone_str)
+    now = datetime.now(tz)
+    current_date = now.strftime("%Y-%m-%d")
+    current_time = now.strftime("%H:%M")
+
+    # Build runtime context string
+    runtime_context = f"""
+        ## Runtime Context (Auto-Generated)
+        Current Date: {current_date}
+        Current Time: {current_time}
+        Timezone: {timezone_str}
+        Salon Location: {salon.city}, {salon.country.name}
+
+        Rules:
+        - Interpret "today", "tomorrow", etc using Current Date.
+        - Never assume static or outdated dates.
+        - All bookings must use this timezone.
+        """
+
+    return runtime_context
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Assistant bootstrap (run once, e.g. from a management command)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -22,6 +74,7 @@ def get_or_create_assistant(salon: Salon) -> str:
     Return the OpenAI assistant_id stored in WhatsappChatbotConfig.
     If not yet created, create it and persist the ID.
     """
+    print("==========================>", get_runtime_context(salon))
     config = salon.salon_whatsapp_chatbot_config
     assistant_id = config.assistant_id.get("id") if config.assistant_id else None
 
@@ -31,14 +84,14 @@ def get_or_create_assistant(salon: Salon) -> str:
         # Keep tools/instructions in sync whenever the app restarts
         client.beta.assistants.update(
             assistant_id=assistant_id,
-            instructions=instructions,
+            instructions=f"{instructions}\n\n{get_runtime_context(salon)}",
             tools=SALON_ASSISTANT_TOOLS,
         )
         return assistant_id
 
     assistant = client.beta.assistants.create(
         name=f"{salon.name} WhatsApp Bot",
-        instructions=instructions,
+        instructions=f"{instructions}\n\n{get_runtime_context(salon)}",
         tools=SALON_ASSISTANT_TOOLS,
         model="gpt-4o",
     )
