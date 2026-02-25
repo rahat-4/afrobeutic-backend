@@ -338,7 +338,7 @@ class Chair(BaseModel):
 
 class Customer(BaseModel):
     first_name = models.CharField(max_length=100)
-    last_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     phone = PhoneNumberField(unique=True)
     source = models.ForeignKey(
@@ -375,7 +375,9 @@ class Booking(BaseModel):
         db_index=True,
     )
     notes = models.TextField(blank=True, null=True)
-    booking_duration = models.DurationField(default=timedelta(minutes=30))
+    booking_duration = models.DurationField(
+        default=timedelta(minutes=30), blank=True, null=True
+    )
     cancellation_reason = models.TextField(blank=True, null=True)
     completed_at = models.DateTimeField(blank=True, null=True)
     tips_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)

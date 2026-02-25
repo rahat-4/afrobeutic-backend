@@ -104,6 +104,13 @@ class SalonSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep["latitude"] = instance.location.y if instance.location else None
+        rep["longitude"] = instance.location.x if instance.location else None
+
+        return rep
+
     def validate(self, attrs):
         opening_hours = attrs.get("opening_hours", [])
         errors = {}

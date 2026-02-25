@@ -51,7 +51,7 @@ class WhatsappChatbotConfig(BaseModel):
     )
 
     def __str__(self):
-        return f"WhatsappChatbotConfig for Account: {self.account.name }"
+        return f"WhatsappChatbotConfig for Account: {self.salon.name }"
 
 
 class WhatsappChatbotMessageLog(BaseModel):

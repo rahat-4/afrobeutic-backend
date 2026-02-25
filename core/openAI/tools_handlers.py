@@ -13,6 +13,7 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 
 from apps.salon.models import (
+    Chair,
     Salon,
     Service,
     Product,
@@ -20,7 +21,7 @@ from apps.salon.models import (
     Customer,
     OpeningHours,
 )
-from apps.salon.choices import BookingStatus
+from apps.salon.choices import BookingStatus, ChairStatus, CustomerType
 from apps.salon.utils import unique_booking_id_generator
 
 # Import your CRM client request model — adjust path as needed
@@ -119,12 +120,38 @@ def get_services_and_products(salon: Salon, gender_filter: str = None) -> dict:
     return _ok({"services": services, "products": products})
 
 
+def get_available_chairs(salon: Salon, booking_date: str, booking_time: str) -> dict:
+    try:
+        b_date = datetime.strptime(booking_date, "%Y-%m-%d").date()
+        b_time = datetime.strptime(booking_time, "%H:%M").time()
+    except ValueError as e:
+        return _err(f"Invalid date/time format: {e}")
+
+    # Get all chairs that are not occupied at the given date/time
+    occupied_chairs = Booking.objects.filter(
+        salon=salon,
+        booking_date=b_date,
+        booking_time=b_time,
+        status__in=[
+            BookingStatus.PLACED,
+            BookingStatus.INPROGRESS,
+            BookingStatus.RESCHEDULED,
+        ],
+    ).values_list("chair_id", flat=True)
+
+    available_chairs = Chair.objects.filter(
+        salon=salon, status=ChairStatus.AVAILABLE
+    ).exclude(id__in=occupied_chairs)
+
+    return _ok({"available_chairs": available_chairs})
+
+
 def make_reservation(
     salon: Salon,
     customer: Customer,
     booking_date: str,
     booking_time: str,
-    service_ids: list[str],
+    service_ids: list[str] = None,
     product_ids: list[str] = None,
     notes: str = "",
     payment_type: str = "CASH",
@@ -140,25 +167,30 @@ def make_reservation(
         return _err("Booking date cannot be in the past.")
 
     # Resolve services
-    services = list(salon.salon_services.filter(uid__in=service_ids))
-    if not services:
-        return _err("No valid services found for the provided IDs.")
+    services = []
+    total_duration = None
+    if service_ids:
+        services = list(salon.salon_services.filter(uid__in=service_ids))
 
-    # Calculate total duration
-    total_duration = sum(
-        (s.service_duration for s in services),
-        start=services[0].service_duration
-        - services[0].service_duration,  # timedelta(0)
-    )
-    if not total_duration:
-        from datetime import timedelta
+        # Calculate total duration
+        total_duration = sum(
+            (s.service_duration for s in services),
+            start=services[0].service_duration
+            - services[0].service_duration,  # timedelta(0)
+        )
+        if not total_duration:
+            from datetime import timedelta
 
-        total_duration = timedelta(minutes=30)
+            total_duration = timedelta(minutes=30)
 
     # Resolve products
     products = []
     if product_ids:
         products = list(salon.salon_products.filter(uid__in=product_ids))
+
+    chairs = get_available_chairs(salon, booking_date, booking_time)
+    if not chairs["success"] or not chairs["available_chairs"]:
+        return _err("No available chairs for the selected date and time.")
 
     booking = Booking.objects.create(
         booking_date=b_date,
@@ -170,8 +202,15 @@ def make_reservation(
         account=salon.account,
         salon=salon,
         customer=customer,
+        chair=chairs["available_chairs"][0] if chairs["available_chairs"] else None,
     )
-    booking.services.set(services)
+
+    # Ensure customer is marked as CUSTOMER type (not just LEAD)
+    customer.type = CustomerType.CUSTOMER
+    customer.save(update_fields=["type"])
+
+    if services:
+        booking.services.set(services)
     if products:
         booking.products.set(products)
 
@@ -185,7 +224,9 @@ def make_reservation(
             "services": [s.name for s in services],
             "products": [p.name for p in products],
             "payment_type": booking.payment_type,
-            "duration_minutes": int(total_duration.total_seconds() // 60),
+            "duration_minutes": (
+                int(total_duration.total_seconds() // 60) if total_duration else None
+            ),
         }
     )
 
@@ -238,6 +279,10 @@ def reschedule_reservation(
     if b_date < date.today():
         return _err("New booking date cannot be in the past.")
 
+    chairs = get_available_chairs(salon, new_booking_date, new_booking_time)
+    if not chairs["success"] or not chairs["available_chairs"]:
+        return _err("No available chairs for the new selected date and time.")
+
     try:
         booking = Booking.objects.get(
             booking_id=booking_id,
@@ -257,6 +302,9 @@ def reschedule_reservation(
     booking.booking_date = b_date
     booking.booking_time = b_time
     booking.status = BookingStatus.PLACED  # reset to placed after reschedule
+    booking.chair = (
+        chairs["available_chairs"][0] if chairs["available_chairs"] else None,
+    )
     booking.save(update_fields=["booking_date", "booking_time", "status"])
 
     return _ok(
