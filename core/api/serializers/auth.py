@@ -101,10 +101,15 @@ class AccountSerializer(serializers.ModelSerializer):
         fields = ["uid", "name", "owner_email", "role"]
 
 
+class AccountSlimSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Account
+        fields = ["uid", "name", "account_type", "created_at"]
+        read_only_fields = ["uid", "account_type", "created_at"]
+
+
 class MeSerializer(serializers.ModelSerializer):
-    account_type = serializers.CharField(
-        source="memberships.first.account.account_type", read_only=True
-    )
+    account = AccountSlimSerializer(source="memberships.first.account")
     role = serializers.SerializerMethodField()
 
     class Meta:
@@ -117,7 +122,7 @@ class MeSerializer(serializers.ModelSerializer):
             "email",
             "role",
             "country",
-            "account_type",
+            "account",
         ]
         read_only_fields = ["uid", "email", "role"]
 
@@ -136,6 +141,35 @@ class MeSerializer(serializers.ModelSerializer):
                 role = None
 
         return role
+
+    def update(self, instance, validated_data):
+        request = self.context.get("request")
+        account_data = validated_data.pop("memberships", None)
+
+        # Update user fields normally
+        instance = super().update(instance, validated_data)
+
+        # Handle account name update
+        if account_data:
+            account = request.account
+
+            try:
+                membership = AccountMembership.objects.get(
+                    user=instance, account=account
+                )
+            except AccountMembership.DoesNotExist:
+                raise serializers.ValidationError("No membership found.")
+
+            if membership.role != "OWNER":
+                raise serializers.ValidationError(
+                    {"account": "Only OWNER can update account name."}
+                )
+
+            account_instance = account
+            account_instance.name = account_data["first"]["account"]["name"]
+            account_instance.save()
+
+        return instance
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

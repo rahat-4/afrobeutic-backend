@@ -8,7 +8,7 @@ urlpatterns = [
     path("/customers", include("api.urls.customers")),
     path("/leads", include("api.urls.leads")),
     path("/support", include("api.urls.supports")),
-    # path("/config", include("api.urls.config")),
+    path("/chatbots", include("api.urls.chatbots")),
     path("/admin", include("api.urls.admin")),
     path("/subscriptions", include("api.urls.subscriptions")),
     path("/consumers", include("api.urls.consumers")),
