@@ -8,8 +8,11 @@ from ..views.accounts import (
     AccountPricingPlanDetailView,
     AccountPricingPlanListView,
     AccountSubscriptionDetailView,
+    AccountBillingHistoryListView,
     AccountMetaConfigView,
     AccountDashboardApiView,
+    AccountPaymentCardListView,
+    AccountPaymentCardDetailView,
 )
 
 
@@ -19,6 +22,13 @@ urlpatterns = [
         "/meta-config",
         AccountMetaConfigView.as_view(),
         name="account.meta-config",
+    ),
+    path("/cards", AccountPaymentCardListView.as_view()),
+    path("/cards/<uuid:card_uid>", AccountPaymentCardDetailView.as_view()),
+    path(
+        "/billing-history",
+        AccountBillingHistoryListView.as_view(),
+        name="account.billing-history",
     ),
     path(
         "/subscription",

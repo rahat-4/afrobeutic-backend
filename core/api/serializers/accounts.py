@@ -1,4 +1,9 @@
+import stripe
+
 from django.contrib.auth import get_user_model
+
+from django.conf import settings
+
 
 from rest_framework import serializers
 
@@ -6,10 +11,13 @@ from apps.authentication.models import Account, AccountInvitation, AccountMember
 from apps.billing.models import (
     Subscription,
     PricingPlan,
+    PaymentTransaction,
+    PaymentCard,
 )
 
 from common.serializers import PricingPlanSlimSerializer
 
+stripe.api_key = settings.STRIPE_SECRET_KEY
 User = get_user_model()
 
 
@@ -121,3 +129,64 @@ class AccountSubscriptionSerializer(serializers.ModelSerializer):
         rep = super().to_representation(instance)
         rep["pricing_plan"] = PricingPlanSlimSerializer(instance.pricing_plan).data
         return rep
+
+
+class AccountBillingHistorySerializer(serializers.ModelSerializer):
+    plan_name = serializers.CharField(
+        source="subscription.pricing_plan.name", read_only=True
+    )
+    invoice_url = serializers.SerializerMethodField()
+    transaction_status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PaymentTransaction
+        fields = [
+            "plan_name",
+            "transaction_status",
+            "amount",
+            "created_at",
+            "invoice_url",
+        ]
+
+    def get_transaction_status(self, obj):
+        if obj.status == "SUCCEEDED":
+            return "Paid"
+        return "Invalid"
+
+    def get_invoice_url(self, obj):
+        if obj.status != "SUCCEEDED":
+            return None
+
+        try:
+            intent = stripe.PaymentIntent.retrieve(obj.transaction_id)
+
+            if intent.charges and intent.charges.data:
+                return intent.charges.data[0].receipt_url
+
+            return None
+        except Exception:
+            return None
+
+
+class AccountPaymentCardSerializer(serializers.ModelSerializer):
+    payment_method_id = serializers.CharField(write_only=True, required=False)
+
+    class Meta:
+        model = PaymentCard
+        fields = [
+            "uid",
+            "card_brand",
+            "last_four",
+            "expiry_month",
+            "expiry_year",
+            "is_default",
+            "payment_method_id",
+        ]
+        read_only_fields = [
+            "uid",
+            "card_brand",
+            "last_four",
+            "expiry_month",
+            "expiry_year",
+            "is_default",
+        ]

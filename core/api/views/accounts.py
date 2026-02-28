@@ -1,7 +1,9 @@
+import stripe
 from datetime import timedelta
 from decouple import config
 from decimal import Decimal
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
@@ -12,6 +14,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.generics import (
     ListAPIView,
+    ListCreateAPIView,
     RetrieveAPIView,
     RetrieveUpdateAPIView,
     RetrieveUpdateDestroyAPIView,
@@ -19,7 +22,7 @@ from rest_framework.generics import (
 
 from apps.authentication.models import Account, AccountMembership
 
-from apps.billing.models import PricingPlan, PaymentTransaction
+from apps.billing.models import PricingPlan, PaymentTransaction, PaymentCard
 from apps.billing.choices import PaymentTransactionStatus, SubscriptionStatus
 from apps.billing.utils import (
     get_or_create_stripe_customer,
@@ -42,9 +45,11 @@ from ..serializers.accounts import (
     AccountMemberSerializer,
     AccountPricingPlanSerializer,
     AccountSubscriptionSerializer,
+    AccountBillingHistorySerializer,
+    AccountPaymentCardSerializer,
 )
 
-
+stripe.api_key = settings.STRIPE_SECRET_KEY
 User = get_user_model()
 
 
@@ -173,6 +178,102 @@ class AccountSubscriptionDetailView(RetrieveUpdateAPIView):
             subscription.status = SubscriptionStatus.PENDING
             subscription.auto_renew = auto_renew
             subscription.save(update_fields=["pricing_plan", "status", "auto_renew"])
+
+
+class AccountBillingHistoryListView(ListAPIView):
+    serializer_class = AccountBillingHistorySerializer
+    permission_classes = [IsOwnerOrAdmin]
+
+    def get_queryset(self):
+        return PaymentTransaction.objects.filter(
+            account=self.request.account
+        ).select_related("subscription__pricing_plan")
+
+
+class AccountPaymentCardListView(ListCreateAPIView):
+    serializer_class = AccountPaymentCardSerializer
+    permission_classes = [IsOwnerOrAdmin]
+
+    def get_queryset(self):
+        return PaymentCard.objects.filter(account=self.request.account)
+
+    def perform_create(self, serializer):
+        account = self.request.account
+        payment_method_id = serializer.validated_data.pop("payment_method_id")
+
+        if not payment_method_id:
+            raise ValidationError("payment_method_id is required.")
+
+        customer_id = get_or_create_stripe_customer(account)
+
+        stripe.PaymentMethod.attach(
+            payment_method_id,
+            customer=customer_id,
+        )
+
+        payment_method = stripe.PaymentMethod.retrieve(payment_method_id)
+
+        is_first_card = not account.account_payment_cards.exists()
+
+        card = serializer.save(
+            account=account,
+            card_token=payment_method_id,
+            last_four=payment_method.card.last4,
+            card_brand=payment_method.card.brand,
+            expiry_month=payment_method.card.exp_month,
+            expiry_year=payment_method.card.exp_year,
+            is_default=is_first_card,
+        )
+
+        if is_first_card:
+            stripe.Customer.modify(
+                customer_id,
+                invoice_settings={"default_payment_method": payment_method_id},
+            )
+
+
+class AccountPaymentCardDetailView(RetrieveUpdateDestroyAPIView):
+    serializer_class = AccountPaymentCardSerializer
+    permission_classes = [IsOwnerOrAdmin]
+    lookup_field = "uid"
+    lookup_url_kwarg = "card_uid"
+
+    def get_queryset(self):
+        return PaymentCard.objects.filter(account=self.request.account)
+
+    def perform_update(self, serializer):
+        account = self.request.account
+        card = self.get_object()
+
+        if serializer.validated_data.get("is_default"):
+
+            with transaction.atomic():
+                PaymentCard.objects.filter(account=account).update(is_default=False)
+                card.is_default = True
+                card.save(update_fields=["is_default"])
+
+                stripe.Customer.modify(
+                    account.stripe_customer_id,
+                    invoice_settings={"default_payment_method": card.card_token},
+                )
+
+    def perform_destroy(self, instance):
+        account = self.request.account
+        was_default = instance.is_default
+
+        stripe.PaymentMethod.detach(instance.card_token)
+        instance.delete()
+
+        if was_default:
+            new_default = account.account_payment_cards.first()
+            if new_default:
+                new_default.is_default = True
+                new_default.save(update_fields=["is_default"])
+
+                stripe.Customer.modify(
+                    account.stripe_customer_id,
+                    invoice_settings={"default_payment_method": new_default.card_token},
+                )
 
 
 class AccountMetaConfigView(APIView):
