@@ -12,6 +12,7 @@ from datetime import datetime, date
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 
+from apps.support.models import AccountSupportTicket
 from apps.salon.models import (
     Chair,
     Salon,
@@ -364,41 +365,36 @@ def send_customer_request(
     related_booking_id: str = None,
 ) -> dict:
     """
-    Save the customer's request/emergency to the CRM.
-    Adjust the ClientRequest import/model to match your actual CRM app.
+    Save the customer's request to AccountSupportTicket (CRM).
     """
-    # ── Option A: if you have a CRM ClientRequest model ──────────────────────
-    # from apps.crm.models import ClientRequest
-    # ClientRequest.objects.create(
-    #     salon=salon,
-    #     account=salon.account,
-    #     customer=customer,
-    #     request_type=request_type,
-    #     message=message,
-    #     related_booking_id=related_booking_id,
-    # )
 
-    # ── Option B: fallback — log it and notify admin via WhatsApp/email ───────
-    logger.info(
-        "CLIENT REQUEST | salon=%s | customer=%s | type=%s | msg=%s | booking=%s",
-        salon.name,
-        customer.phone,
-        request_type,
-        message,
-        related_booking_id,
-    )
+    try:
+        ticket = AccountSupportTicket.objects.create(
+            account=salon.account,
+            salon=salon,
+            customer=customer,
+            type=request_type,
+            summary=(
+                f"{message}\n\nRelated Booking ID: {related_booking_id}"
+                if related_booking_id
+                else message
+            ),
+        )
 
-    # You could also trigger a Twilio message to the admin number here:
-    # _notify_admin(salon, customer, request_type, message)
+        return _ok(
+            {
+                "ticket_id": str(ticket.uid),
+                "status": ticket.status,
+                "message": (
+                    "Your request has been sent to our team. "
+                    "We will contact you shortly."
+                ),
+            }
+        )
 
-    return _ok(
-        {
-            "message": (
-                "Your request has been sent to our team. "
-                "We will get back to you as soon as possible."
-            )
-        }
-    )
+    except Exception as exc:
+        logger.exception("Failed to create support ticket: %s", exc)
+        return _err("We couldn't submit your request at the moment. Please try again.")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

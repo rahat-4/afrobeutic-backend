@@ -45,7 +45,7 @@ class AccountSupportTicket(BaseModel):
     type = models.CharField(
         max_length=20,
         choices=QueryType.choices,
-        default=QueryType.GENERAL,
+        default=QueryType.GENERAL_INQUIRY,
     )
     summary = models.TextField()
     status = models.CharField(

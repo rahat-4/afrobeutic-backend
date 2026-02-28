@@ -25,5 +25,8 @@ class SupportTicketStatus(models.TextChoices):
 
 
 class QueryType(models.TextChoices):
-    EMERGENCY = "EMERGENCY", _("Emergency")
-    GENERAL = "GENERAL", _("General")
+    EMERGENCY = "EMERGENCY", "Emergency"
+    CALLBACK_REQUEST = "CALLBACK_REQUEST", "Callback Request"
+    COMPLAINT = "COMPLAINT", "Complaint"
+    GENERAL_INQUIRY = "GENERAL_INQUIRY", "General Inquiry"
+    SPECIAL_REQUEST = "SPECIAL_REQUEST", "Special Request"
