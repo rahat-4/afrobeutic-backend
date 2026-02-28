@@ -32,6 +32,7 @@ from apps.billing.utils import (
 from apps.authentication.emails import send_account_invitation_email
 from apps.salon.models import Booking
 from apps.salon.models import BookingStatus
+from apps.support.models import AccountSupportTicket
 from apps.thirdparty.models import MetaConfig
 from apps.thirdparty.utils import create_twilio_subaccount
 
@@ -400,21 +401,18 @@ class AccountDashboardApiView(APIView):
 
         start_date, end_date = self.get_date_range(filter_type)
 
+        # ==========================
+        # BOOKINGS BASE QUERYSET
+        # ==========================
         bookings = Booking.objects.filter(account=account)
 
         if start_date and end_date:
-            bookings = bookings.filter(booking_date__range=(start_date, end_date))
+            bookings = bookings.filter(booking_date__date__range=(start_date, end_date))
 
         # ==========================
         # TOTAL BOOKINGS
         # ==========================
         total_bookings = bookings.count()
-
-        # ==========================
-        # CLIENT REQUESTS
-        # (same as total bookings)
-        # ==========================
-        client_requests = total_bookings
 
         # ==========================
         # COMPLETED BOOKINGS
@@ -426,16 +424,28 @@ class AccountDashboardApiView(APIView):
         # ==========================
         # BOOKING COMPLETION RATE
         # ==========================
-        if total_bookings > 0:
-            completion_rate = round((completed_count / total_bookings) * 100, 2)
-        else:
-            completion_rate = 0
+        completion_rate = (
+            round((completed_count / total_bookings) * 100, 2)
+            if total_bookings > 0
+            else 0
+        )
 
         # ==========================
         # TOTAL CLIENTS
-        # Unique customers in period
         # ==========================
         total_clients = bookings.values("customer").distinct().count()
+
+        # ==========================
+        # CLIENT REQUESTS
+        # ==========================
+        client_requests = AccountSupportTicket.objects.filter(account=account)
+
+        if start_date and end_date:
+            client_requests = client_requests.filter(
+                created_at__date__range=(start_date, end_date)
+            )
+
+        client_requests_count = client_requests.count()
 
         # ==========================
         # TOTAL INCOME
@@ -443,16 +453,13 @@ class AccountDashboardApiView(APIView):
         total_income = Decimal("0.00")
 
         for booking in completed_bookings.prefetch_related("services", "products"):
-            # services income (with discount)
             for service in booking.services.all():
                 total_income += service.final_price()
 
-            # products income
             for product in booking.products.all():
                 total_income += product.price
 
-            # tips
-            total_income += booking.tips_amount
+            total_income += booking.tips_amount or Decimal("0.00")
 
         total_income = total_income.quantize(Decimal("0.01"))
 
@@ -461,7 +468,7 @@ class AccountDashboardApiView(APIView):
                 "total_bookings": total_bookings,
                 "booking_completion_rate": completion_rate,
                 "total_income": total_income,
-                "client_requests": client_requests,
+                "client_requests": client_requests_count,
                 "total_clients": total_clients,
             }
         )
