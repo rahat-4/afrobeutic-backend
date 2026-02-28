@@ -9,10 +9,12 @@ from ..views.accounts import (
     AccountPricingPlanListView,
     AccountSubscriptionDetailView,
     AccountMetaConfigView,
+    AccountDashboardApiView,
 )
 
 
 urlpatterns = [
+    path("/dashboard", AccountDashboardApiView.as_view(), name="account.dashboard"),
     path(
         "/meta-config",
         AccountMetaConfigView.as_view(),

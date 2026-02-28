@@ -3,12 +3,18 @@ from urllib.parse import urlencode
 
 from datetime import timedelta
 
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.password_validation import validate_password
 from django.utils import timezone
 from django.utils.http import urlsafe_base64_decode
 from django.http import HttpResponseRedirect
 from django.contrib.auth import get_user_model
 from django.conf import settings
 
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -20,6 +26,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from apps.authentication.models import AccountInvitation, AccountMembership
 from apps.authentication.emails import (
     send_verification_email,
+    send_password_reset_email,
 )
 from apps.authentication.sms import send_otp_sms, send_otp_whatsapp
 
@@ -363,6 +370,149 @@ class VerifyCustomerOTPView(APIView):
 
         return Response(
             {"message": "OTP verified successfully.", "token": token},
+            status=status.HTTP_200_OK,
+        )
+
+
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+
+        old_password = request.data.get("old_password")
+        new_password = request.data.get("new_password")
+        confirm_password = request.data.get("confirm_password")
+
+        # Validate required fields
+        if not old_password or not new_password or not confirm_password:
+            return Response(
+                {"error": "All fields are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check old password
+        if not user.check_password(old_password):
+            return Response(
+                {"error": "Old password is incorrect."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check new password match
+        if new_password != confirm_password:
+            return Response(
+                {"error": "New password and confirm password do not match."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate password strength (Django validators)
+        try:
+            validate_password(new_password, user=user)
+        except Exception as e:
+            return Response(
+                {"error": list(e.messages)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Set new password
+        user.set_password(new_password)
+        user.save()
+
+        # Keep user logged in after password change
+        update_session_auth_hash(request, user)
+
+        return Response(
+            {"message": "Password changed successfully."},
+            status=status.HTTP_200_OK,
+        )
+
+
+# TODO: forgot and reset password check later
+class ForgotPasswordView(APIView):
+    permission_classes = []
+
+    def post(self, request):
+        email = request.data.get("email")
+
+        if not email:
+            return Response(
+                {"error": "Email is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = User.objects.filter(email__iexact=email).first()
+
+        # Always return success (security: prevent email enumeration)
+        if not user:
+            return Response(
+                {"message": "If the email exists, a reset link has been sent."},
+                status=status.HTTP_200_OK,
+            )
+
+        uid64 = urlsafe_base64_encode(force_bytes(user.uid))
+        token = email_token_generator.make_token(user)
+
+        reset_url = (
+            f"{settings.FRONTEND_URL}/auth/reset-password" f"?uid={uid64}&token={token}"
+        )
+
+        send_password_reset_email(user, reset_url)
+
+        return Response(
+            {"message": "If the email exists, a reset link has been sent."},
+            status=status.HTTP_200_OK,
+        )
+
+
+class ResetPasswordView(APIView):
+    permission_classes = []
+
+    def post(self, request):
+        uid64 = request.data.get("uid")
+        token = request.data.get("token")
+        new_password = request.data.get("new_password")
+        confirm_password = request.data.get("confirm_password")
+
+        if not all([uid64, token, new_password, confirm_password]):
+            return Response(
+                {"error": "All fields are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if new_password != confirm_password:
+            return Response(
+                {"error": "Passwords do not match."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            uid = force_str(urlsafe_base64_decode(uid64))
+            user = User.objects.get(uid=uid)
+        except (User.DoesNotExist, ValueError, TypeError):
+            return Response(
+                {"error": "Invalid reset link."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not email_token_generator.check_token(user, token):
+            return Response(
+                {"error": "Token is invalid or expired."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            validate_password(new_password, user=user)
+        except Exception as e:
+            return Response(
+                {"error": list(e.messages)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.set_password(new_password)
+        user.save()
+
+        return Response(
+            {"message": "Password reset successfully."},
             status=status.HTTP_200_OK,
         )
 

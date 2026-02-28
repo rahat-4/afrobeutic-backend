@@ -1,5 +1,6 @@
 from datetime import timedelta
 from decouple import config
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -26,8 +27,11 @@ from apps.billing.utils import (
     charge_customer,
 )
 from apps.authentication.emails import send_account_invitation_email
+from apps.salon.models import Booking
+from apps.salon.models import BookingStatus
 from apps.thirdparty.models import MetaConfig
 from apps.thirdparty.utils import create_twilio_subaccount
+
 
 from common.crypto import encrypt_data, decrypt_data
 from common.permissions import IsOwner, IsOwnerOrAdmin, IsOwnerOrAdminOrStaff
@@ -257,4 +261,106 @@ class AccountMetaConfigView(APIView):
         return Response(
             {"message": "Meta configuration deleted successfully."},
             status=status.HTTP_200_OK,
+        )
+
+
+# GET /api/dashboard/?filter=last_7_days
+# GET /api/dashboard/?filter=last_30_days
+# GET /api/dashboard/?filter=this_month
+# GET /api/dashboard/?filter=this_year
+# GET /api/dashboard/?filter=all_time
+class AccountDashboardApiView(APIView):
+    permission_classes = [IsOwnerOrAdminOrStaff]
+
+    def get_date_range(self, filter_type):
+        today = timezone.now().date()
+
+        if filter_type == "last_7_days":
+            return today - timedelta(days=7), today
+
+        elif filter_type == "last_30_days":
+            return today - timedelta(days=30), today
+
+        elif filter_type == "this_month":
+            return today.replace(day=1), today
+
+        elif filter_type == "this_year":
+            return today.replace(month=1, day=1), today
+
+        elif filter_type == "all_time":
+            return None, None
+
+        # default
+        return today - timedelta(days=7), today
+
+    def get(self, request):
+        account = request.account
+        filter_type = request.query_params.get("filter", "last_7_days")
+
+        start_date, end_date = self.get_date_range(filter_type)
+
+        bookings = Booking.objects.filter(account=account)
+
+        if start_date and end_date:
+            bookings = bookings.filter(booking_date__range=(start_date, end_date))
+
+        # ==========================
+        # TOTAL BOOKINGS
+        # ==========================
+        total_bookings = bookings.count()
+
+        # ==========================
+        # CLIENT REQUESTS
+        # (same as total bookings)
+        # ==========================
+        client_requests = total_bookings
+
+        # ==========================
+        # COMPLETED BOOKINGS
+        # ==========================
+        completed_bookings = bookings.filter(status=BookingStatus.COMPLETED)
+
+        completed_count = completed_bookings.count()
+
+        # ==========================
+        # BOOKING COMPLETION RATE
+        # ==========================
+        if total_bookings > 0:
+            completion_rate = round((completed_count / total_bookings) * 100, 2)
+        else:
+            completion_rate = 0
+
+        # ==========================
+        # TOTAL CLIENTS
+        # Unique customers in period
+        # ==========================
+        total_clients = bookings.values("customer").distinct().count()
+
+        # ==========================
+        # TOTAL INCOME
+        # ==========================
+        total_income = Decimal("0.00")
+
+        for booking in completed_bookings.prefetch_related("services", "products"):
+            # services income (with discount)
+            for service in booking.services.all():
+                total_income += service.final_price()
+
+            # products income
+            for product in booking.products.all():
+                total_income += product.price
+
+            # tips
+            total_income += booking.tips_amount
+
+        total_income = total_income.quantize(Decimal("0.01"))
+
+        return Response(
+            {
+                "total_bookings": total_bookings,
+                "booking_completion_rate": completion_rate,
+                "total_income": total_income,
+                "client_requests": client_requests,
+                "total_clients": total_clients,
+            }
         )

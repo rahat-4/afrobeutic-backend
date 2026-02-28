@@ -12,6 +12,17 @@ class Command(BaseCommand):
             # Individual Stylist Plans
             {
                 "account_category": AccountCategory.INDIVIDUAL_STYLIST,
+                "name": "Free",
+                "price": 0.00,
+                "salon_limit": 1,
+                "whatsapp_chatbot_limit": 0,
+                "whatsapp_messages_per_chatbot": 0,
+                "has_broadcasting": False,
+                "broadcasting_message_limit": 0,
+                "description": "Custom plan based on your specific needs",
+            },
+            {
+                "account_category": AccountCategory.INDIVIDUAL_STYLIST,
                 "name": "Gold",
                 "price": 10.00,
                 "salon_limit": 1,
@@ -28,12 +39,13 @@ class Command(BaseCommand):
                 "salon_limit": 1,
                 "whatsapp_chatbot_limit": 1,
                 "whatsapp_messages_per_chatbot": 2000,
-                "has_broadcasting": True,
-                "broadcasting_message_limit": 100,
+                "has_broadcasting": False,
+                "broadcasting_message_limit": 0,
                 "description": "Advanced features for professional stylists",
             },
+            # Salon Shop Plans
             {
-                "account_category": AccountCategory.INDIVIDUAL_STYLIST,
+                "account_category": AccountCategory.SALON_SHOP,
                 "name": "Free",
                 "price": 0.00,
                 "salon_limit": 1,
@@ -41,9 +53,8 @@ class Command(BaseCommand):
                 "whatsapp_messages_per_chatbot": 0,
                 "has_broadcasting": False,
                 "broadcasting_message_limit": 0,
-                "description": "Custom plan based on your specific needs",
+                "description": "Custom plan tailored to your salon network",
             },
-            # Salon Shop Plans
             {
                 "account_category": AccountCategory.SALON_SHOP,
                 "name": "Gold",
@@ -65,17 +76,6 @@ class Command(BaseCommand):
                 "has_broadcasting": True,
                 "broadcasting_message_limit": 300,
                 "description": "Perfect for multi-location salons",
-            },
-            {
-                "account_category": AccountCategory.SALON_SHOP,
-                "name": "Free",
-                "price": 0.00,
-                "salon_limit": 1,
-                "whatsapp_chatbot_limit": 0,
-                "whatsapp_messages_per_chatbot": 0,
-                "has_broadcasting": False,
-                "broadcasting_message_limit": 0,
-                "description": "Custom plan tailored to your salon network",
             },
         ]
 

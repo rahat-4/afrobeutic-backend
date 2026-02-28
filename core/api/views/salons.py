@@ -118,6 +118,8 @@ class SalonDetailView(RetrieveUpdateDestroyAPIView):
 
 
 class SalonDashboardApiView(APIView):
+    permission_classes = [IsOwnerOrAdminOrStaff]
+
     def get(self, request, salon_uid):
         user = request.user
         account = request.account
