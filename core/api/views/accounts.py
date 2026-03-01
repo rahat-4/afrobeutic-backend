@@ -148,11 +148,17 @@ class AccountSubscriptionDetailView(RetrieveUpdateAPIView):
             account = self.request.account
             subscription = self.get_object()
 
-            pricing_plan = serializer.validated_data["pricing_plan"]
-            payment_card = serializer.validated_data["payment_card"]
+            pricing_plan = serializer.validated_data.get("pricing_plan")
+            payment_card = serializer.validated_data.get("payment_card")
             auto_renew = serializer.validated_data.get(
                 "auto_renew", subscription.auto_renew
             )
+
+            # Case 1: Only auto_renew update
+            if pricing_plan is None:
+                subscription.auto_renew = auto_renew
+                subscription.save(update_fields=["auto_renew"])
+                return
 
             customer_id = get_or_create_stripe_customer(account)
 

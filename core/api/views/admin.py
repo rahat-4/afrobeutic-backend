@@ -3,7 +3,16 @@ from decimal import Decimal
 from django_filters.rest_framework import DjangoFilterBackend
 
 from django.contrib.auth import get_user_model
-from django.db.models import Prefetch, Sum, F, DecimalField, ExpressionWrapper, Value
+from django.db.models import (
+    Count,
+    Prefetch,
+    Sum,
+    F,
+    DecimalField,
+    ExpressionWrapper,
+    Value,
+    Q,
+)
 from django.db.models.functions import Coalesce
 
 from rest_framework import filters
@@ -52,7 +61,7 @@ from ..serializers.admin import (
     AdminAccountEnquirySerializer,
     AdminPricingPlanSerializer,
     AdminSubscriptionGetSerializer,
-    AdminSubscriptionPostSerializer
+    AdminSubscriptionPostSerializer,
 )
 
 User = get_user_model()
@@ -579,6 +588,7 @@ class AdminSubscriptionListView(ListCreateAPIView):
             return AdminSubscriptionPostSerializer
         return AdminSubscriptionGetSerializer
 
+
 class AdminSubscriptionDetailView(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsManagementAdminOrStaff]
 
@@ -595,3 +605,23 @@ class AdminSubscriptionDetailView(RetrieveUpdateDestroyAPIView):
             return subscription
         except Subscription.DoesNotExist:
             raise ValidationError("Subscription not found.")
+
+
+class AdminDashboardApiView(APIView):
+    permission_classes = [IsManagementAdminOrStaff]
+
+    def get(self, request):
+        stats = User.objects.aggregate(
+            total_management_user=Count("id", filter=Q(is_staff=True))
+        )
+
+        account_count = Account.objects.count()
+        salon_count = Salon.objects.count()
+
+        data = {
+            "management_users": stats["total_management_user"],
+            "accounts": account_count,
+            "salons": salon_count,
+        }
+
+        return Response(data, status=status.HTTP_200_OK)

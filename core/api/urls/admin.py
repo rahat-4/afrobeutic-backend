@@ -21,10 +21,12 @@ from ..views.admin import (
     AdminPricingPlanListView,
     AdminPricingPlanDetailView,
     AdminSubscriptionListView,
-    AdminSubscriptionDetailView
+    AdminSubscriptionDetailView,
+    AdminDashboardApiView,
 )
 
 urlpatterns = [
+    path("/dashboard", AdminDashboardApiView.as_view(), name="admin.dashboard"),
     path(
         "/subscriptions/<uuid:subscription_uid>",
         AdminSubscriptionDetailView.as_view(),
