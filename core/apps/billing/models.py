@@ -1,8 +1,5 @@
-from datetime import timedelta
-
 from django.db import models
-from django.utils import timezone
-from django.db.models import UniqueConstraint
+from django.db.models import Q, UniqueConstraint
 from django.db.models.functions import Lower
 
 from common.models import BaseModel
@@ -98,6 +95,15 @@ class PaymentCard(BaseModel):
     account = models.ForeignKey(
         Account, on_delete=models.CASCADE, related_name="account_payment_cards"
     )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["account"],
+                condition=Q(is_default=True),
+                name="unique_default_card_per_account",
+            )
+        ]
 
     def __str__(self):
         return f"{self.card_brand} ending in {self.last_four}"

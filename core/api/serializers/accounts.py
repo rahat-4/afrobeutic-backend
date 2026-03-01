@@ -3,6 +3,7 @@ import stripe
 from django.contrib.auth import get_user_model
 
 from django.conf import settings
+from django.db import transaction
 
 
 from rest_framework import serializers
@@ -101,7 +102,12 @@ class AccountSubscriptionSerializer(serializers.ModelSerializer):
         queryset=PricingPlan.objects.all(),
         write_only=True,
     )
-    payment_method_id = serializers.CharField(write_only=True)
+
+    payment_card = serializers.SlugRelatedField(
+        slug_field="uid",
+        queryset=PaymentCard.objects.all(),
+        write_only=True,
+    )
 
     class Meta:
         model = Subscription
@@ -114,7 +120,7 @@ class AccountSubscriptionSerializer(serializers.ModelSerializer):
             "cancelled_at",
             "notes",
             "pricing_plan",
-            "payment_method_id",
+            "payment_card",
         ]
 
         read_only_fields = [
@@ -124,6 +130,14 @@ class AccountSubscriptionSerializer(serializers.ModelSerializer):
             "next_billing_date",
             "cancelled_at",
         ]
+
+    def validate_payment_card(self, value):
+        request = self.context["request"]
+
+        if value.account != request.account:
+            raise serializers.ValidationError("Invalid payment card.")
+
+        return value
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
@@ -188,5 +202,34 @@ class AccountPaymentCardSerializer(serializers.ModelSerializer):
             "last_four",
             "expiry_month",
             "expiry_year",
-            "is_default",
         ]
+
+    def update(self, instance, validated_data):
+        request = self.context["request"]
+        account = request.account
+
+        is_default = validated_data.get("is_default", None)
+
+        with transaction.atomic():
+            # If setting this card as default
+            if is_default is True:
+
+                # Unset all other cards
+                PaymentCard.objects.filter(account=account).update(is_default=False)
+
+                instance.is_default = True
+                instance.save(update_fields=["is_default"])
+
+                # Sync with Stripe
+                stripe.Customer.modify(
+                    account.stripe_customer_id,
+                    invoice_settings={"default_payment_method": instance.card_token},
+                )
+
+            # Prevent manually unsetting default card
+            elif is_default is False and instance.is_default:
+                raise serializers.ValidationError(
+                    {"is_default": "You cannot unset the default card directly."}
+                )
+
+        return instance

@@ -149,14 +149,15 @@ class AccountSubscriptionDetailView(RetrieveUpdateAPIView):
             subscription = self.get_object()
 
             pricing_plan = serializer.validated_data["pricing_plan"]
-            payment_method_id = serializer.validated_data["payment_method_id"]
+            payment_card = serializer.validated_data["payment_card"]
             auto_renew = serializer.validated_data.get(
                 "auto_renew", subscription.auto_renew
             )
 
             customer_id = get_or_create_stripe_customer(account)
 
-            attach_payment_method(customer_id, payment_method_id)
+            # Use saved card token
+            payment_method_id = payment_card.card_token
 
             intent = charge_customer(
                 customer_id,
@@ -164,7 +165,6 @@ class AccountSubscriptionDetailView(RetrieveUpdateAPIView):
                 pricing_plan.price,
             )
 
-            # Save transaction (PENDING, webhook will finalize)
             PaymentTransaction.objects.create(
                 account=account,
                 subscription=subscription,
@@ -241,22 +241,6 @@ class AccountPaymentCardDetailView(RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return PaymentCard.objects.filter(account=self.request.account)
-
-    def perform_update(self, serializer):
-        account = self.request.account
-        card = self.get_object()
-
-        if serializer.validated_data.get("is_default"):
-
-            with transaction.atomic():
-                PaymentCard.objects.filter(account=account).update(is_default=False)
-                card.is_default = True
-                card.save(update_fields=["is_default"])
-
-                stripe.Customer.modify(
-                    account.stripe_customer_id,
-                    invoice_settings={"default_payment_method": card.card_token},
-                )
 
     def perform_destroy(self, instance):
         account = self.request.account
