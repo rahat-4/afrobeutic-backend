@@ -381,6 +381,24 @@ def send_customer_request(
             ),
         )
 
+        # 2️⃣ Send Email to Salon Owner
+        owner_email = salon.account.owner.email
+
+        # send_mail(
+        #     subject=f"New Client Request - {request_type}",
+        #     message=(
+        #         f"Salon: {salon.name}\n"
+        #         f"Customer: {customer.full_name}\n"
+        #         f"Phone: {customer.phone}\n"
+        #         f"Type: {request_type}\n\n"
+        #         f"Message:\n{message}\n\n"
+        #         f"Ticket ID: {ticket.uid}"
+        #     ),
+        #     from_email=settings.DEFAULT_FROM_EMAIL,
+        #     recipient_list=[owner_email],
+        #     fail_silently=True,  # Important: don't break chatbot if email fails
+        # )
+
         return _ok(
             {
                 "ticket_id": str(ticket.uid),

@@ -126,6 +126,19 @@ class MeSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["uid", "email", "role"]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        request = self.context.get("request")
+        if not request:
+            return
+
+        user = request.user
+
+        # 🔥 Remove account field for admin or staff
+        if user.is_admin or user.is_staff:
+            self.fields.pop("account", None)
+
     def get_role(self, obj):
         user = self.context.get("request").user
 

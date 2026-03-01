@@ -86,30 +86,6 @@ class Subscription(BaseModel):
         return self.pricing_plan.whatsapp_messages_per_chatbot
 
 
-class Chatbot(BaseModel):
-    name = models.CharField(max_length=100)
-    messages_sent = models.PositiveIntegerField(default=0)
-
-    is_active = models.BooleanField(default=True)
-
-    # Fk
-    subscription = models.ForeignKey(
-        Subscription, on_delete=models.CASCADE, related_name="subscription_chatbots"
-    )
-    account = models.ForeignKey(
-        Account, on_delete=models.CASCADE, related_name="account_chatbots"
-    )
-
-    def __str__(self):
-        return f"{self.name} ({self.subscription.account.user.username})"
-
-    def message_limit(self):
-        return self.subscription.messages_per_chatbot
-
-    def has_remaining_messages(self):
-        return self.messages_sent < self.message_limit()
-
-
 class PaymentCard(BaseModel):
     card_token = models.CharField(max_length=255, help_text="Payment gateway token")
     last_four = models.CharField(max_length=4)

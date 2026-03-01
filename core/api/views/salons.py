@@ -1528,10 +1528,26 @@ class SalonWhatsappView(APIView):
 
     def post(self, request, salon_uid, *args, **kwargs):
         salon = self._get_salon(request, salon_uid)
+        account = request.account
+        subscription = account.account_subscription
+
+        if subscription and subscription.pricing_plan.whatsapp_chatbot_limit:
+            chatbot_limit = subscription.pricing_plan.whatsapp_chatbot_limit
+            existing_chatbot_count = WhatsappChatbotConfig.objects.filter(
+                account=account
+            ).count()
+
+            if existing_chatbot_count >= chatbot_limit:
+                return Response(
+                    {
+                        "detail": f"Your current subscription plan allows a maximum of {chatbot_limit} chatbot(s). Please upgrade your plan to add more chatbots."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         if WhatsappChatbotConfig.objects.filter(
             salon=salon,
-            account=request.account,
+            account=account,
         ).exists():
             return Response(
                 {"detail": "WhatsApp sender already registered for this salon"},
@@ -1549,7 +1565,7 @@ class SalonWhatsappView(APIView):
 
         print("WhatsApp sender number from request:", whatsapp_sender_number)
 
-        credentials = self._get_meta_credentials(request.account)
+        credentials = self._get_meta_credentials(account)
         if not credentials:
             return Response(
                 {"error": "Meta configuration not found"},
@@ -1600,7 +1616,7 @@ class SalonWhatsappView(APIView):
                     status=sender.status,
                     created_by=request.user,
                     salon=salon,
-                    account=request.account,
+                    account=account,
                 )
 
         except Exception as e:

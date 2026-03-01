@@ -50,6 +50,21 @@ class WhatsappChatbotConfig(BaseModel):
         related_name="account_whatsapp_chatbot_configs",
     )
 
+    def messages_sent_count(self):
+        """Return number of messages sent by this chatbot"""
+        return self.messages.count()
+
+    def remaining_messages(self):
+        """
+        Return remaining messages allowed for this chatbot based on plan
+        """
+        plan_limit = self.account.pricing_plan.whatsapp_messages_per_chatbot
+        return max(plan_limit - self.messages_sent_count(), 0)
+
+    def has_remaining_messages(self):
+        """Check if this chatbot can send more messages"""
+        return self.remaining_messages() > 0
+
     def __str__(self):
         return f"WhatsappChatbotConfig for Account: {self.salon.name }"
 

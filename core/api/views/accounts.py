@@ -366,11 +366,11 @@ class AccountMetaConfigView(APIView):
         )
 
 
-# GET /api/dashboard/?filter=last_7_days
-# GET /api/dashboard/?filter=last_30_days
-# GET /api/dashboard/?filter=this_month
-# GET /api/dashboard/?filter=this_year
-# GET /api/dashboard/?filter=all_time
+# GET /api/dashboard/?bookings_filter=last_7_days
+# GET /api/dashboard/?bookings_filter=last_30_days
+# GET /api/dashboard/?income_filter=this_month
+# GET /api/dashboard/?requests_filter=this_year
+# GET /api/dashboard/?clients_filter=all_time
 class AccountDashboardApiView(APIView):
     permission_classes = [IsOwnerOrAdminOrStaff]
 
@@ -379,51 +379,43 @@ class AccountDashboardApiView(APIView):
 
         if filter_type == "last_7_days":
             return today - timedelta(days=7), today
-
         elif filter_type == "last_30_days":
             return today - timedelta(days=30), today
-
         elif filter_type == "this_month":
             return today.replace(day=1), today
-
         elif filter_type == "this_year":
             return today.replace(month=1, day=1), today
-
         elif filter_type == "all_time":
             return None, None
 
-        # default
         return today - timedelta(days=7), today
+
+    def apply_date_filter(self, queryset, field, start_date, end_date):
+        if start_date and end_date:
+            return queryset.filter(**{f"{field}__range": (start_date, end_date)})
+        return queryset
 
     def get(self, request):
         account = request.account
-        filter_type = request.query_params.get("filter", "last_7_days")
 
-        start_date, end_date = self.get_date_range(filter_type)
+        # Separate filters for each card
+        bookings_filter = request.query_params.get("bookings_filter", "last_7_days")
+        income_filter = request.query_params.get("income_filter", "last_7_days")
+        requests_filter = request.query_params.get("requests_filter", "last_7_days")
+        clients_filter = request.query_params.get("clients_filter", "last_7_days")
 
         # ==========================
-        # BOOKINGS BASE QUERYSET
+        # CARD 1 - BOOKINGS
         # ==========================
         bookings = Booking.objects.filter(account=account)
+        start, end = self.get_date_range(bookings_filter)
+        bookings = self.apply_date_filter(bookings, "booking_date", start, end)
 
-        if start_date and end_date:
-            bookings = bookings.filter(booking_date__date__range=(start_date, end_date))
-
-        # ==========================
-        # TOTAL BOOKINGS
-        # ==========================
         total_bookings = bookings.count()
 
-        # ==========================
-        # COMPLETED BOOKINGS
-        # ==========================
         completed_bookings = bookings.filter(status=BookingStatus.COMPLETED)
-
         completed_count = completed_bookings.count()
 
-        # ==========================
-        # BOOKING COMPLETION RATE
-        # ==========================
         completion_rate = (
             round((completed_count / total_bookings) * 100, 2)
             if total_bookings > 0
@@ -431,28 +423,19 @@ class AccountDashboardApiView(APIView):
         )
 
         # ==========================
-        # TOTAL CLIENTS
+        # CARD 2 - INCOME
         # ==========================
-        total_clients = bookings.values("customer").distinct().count()
+        income_bookings = Booking.objects.filter(
+            account=account, status=BookingStatus.COMPLETED
+        )
+        start, end = self.get_date_range(income_filter)
+        income_bookings = self.apply_date_filter(
+            income_bookings, "booking_date", start, end
+        )
 
-        # ==========================
-        # CLIENT REQUESTS
-        # ==========================
-        client_requests = AccountSupportTicket.objects.filter(account=account)
-
-        if start_date and end_date:
-            client_requests = client_requests.filter(
-                created_at__date__range=(start_date, end_date)
-            )
-
-        client_requests_count = client_requests.count()
-
-        # ==========================
-        # TOTAL INCOME
-        # ==========================
         total_income = Decimal("0.00")
 
-        for booking in completed_bookings.prefetch_related("services", "products"):
+        for booking in income_bookings.prefetch_related("services", "products"):
             for service in booking.services.all():
                 total_income += service.final_price()
 
@@ -463,12 +446,42 @@ class AccountDashboardApiView(APIView):
 
         total_income = total_income.quantize(Decimal("0.01"))
 
+        # ==========================
+        # CARD 3 - CLIENT REQUESTS
+        # ==========================
+        client_requests = AccountSupportTicket.objects.filter(account=account)
+        start, end = self.get_date_range(requests_filter)
+        client_requests = self.apply_date_filter(
+            client_requests, "created_at__date", start, end
+        )
+
+        client_requests_count = client_requests.count()
+
+        # ==========================
+        # CARD 4 - TOTAL CLIENTS
+        # ==========================
+        clients_bookings = Booking.objects.filter(account=account)
+        start, end = self.get_date_range(clients_filter)
+        clients_bookings = self.apply_date_filter(
+            clients_bookings, "booking_date", start, end
+        )
+
+        total_clients = clients_bookings.values("customer").distinct().count()
+
         return Response(
             {
-                "total_bookings": total_bookings,
-                "booking_completion_rate": completion_rate,
-                "total_income": total_income,
-                "client_requests": client_requests_count,
-                "total_clients": total_clients,
+                "card_1": {
+                    "total_bookings": total_bookings,
+                    "booking_completion_rate": completion_rate,
+                },
+                "card_2": {
+                    "total_income": total_income,
+                },
+                "card_3": {
+                    "client_requests": client_requests_count,
+                },
+                "card_4": {
+                    "total_clients": total_clients,
+                },
             }
         )

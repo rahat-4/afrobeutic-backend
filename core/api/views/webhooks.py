@@ -2,6 +2,7 @@ import logging
 import stripe
 from decouple import config
 from django.conf import settings
+from django.core.mail import send_mail
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -151,6 +152,37 @@ class WhatsappCallbackView(APIView):
         self._log_message(
             bot, customer, incoming_message, WhatsappChatbotMessageRole.CUSTOMER
         )
+
+        # ── 6.5. Check chatbot message limit ─────────────────────────────────
+        if not bot.has_remaining_messages():
+            # Optional: notify salon owner
+            try:
+                send_mail(
+                    subject="Chatbot message limit reached",
+                    message=f"Your WhatsApp Chatbot '{bot.chatbot_name}' has reached its message limit.",
+                    from_email="no-reply@yourapp.com",
+                    recipient_list=[
+                        bot.salon.owner_email
+                    ],  # make sure this field exists
+                    fail_silently=True,
+                )
+            except Exception as exc:
+                logger.warning("Failed to notify salon owner about limit: %s", exc)
+
+            # Block sending the message
+            logger.warning(
+                "Chatbot %s reached message limit. Message not sent.", bot.chatbot_name
+            )
+            return JsonResponse(
+                {
+                    "status": "error",
+                    "message": (
+                        f"This chatbot has reached its message limit: "
+                        f"{bot.account.pricing_plan.whatsapp_messages_per_chatbot}"
+                    ),
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         # ── 5. Run the OpenAI assistant ───────────────────────────────────────
         try:
