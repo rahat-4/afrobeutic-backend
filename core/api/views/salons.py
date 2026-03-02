@@ -3,7 +3,6 @@ from datetime import datetime
 from datetime import timedelta
 from decimal import Decimal
 from decouple import config
-from openai import OpenAI
 
 # Register whatsapp sender on Twilio
 from twilio.rest import Client
@@ -41,7 +40,7 @@ from apps.salon.models import (
     Employee,
 )
 
-from apps.thirdparty.models import WhatsappChatbotConfig
+from apps.thirdparty.models import WhatsappChatbotConfig, WhatsappChatbotMessageLog
 
 from common.crypto import encrypt_data, decrypt_data
 from common.filters import BookingDateFilter
@@ -64,6 +63,7 @@ from ..serializers.salons import (
     SalonBookingCalendarSerializer,
     SalonBookingCalendarDetailSerializer,
     SalonLookBookSerializer,
+    SalonWhatsappChatbotMessageLogSerializer,
 )
 
 
@@ -1678,3 +1678,17 @@ class SalonWhatsappView(APIView):
             {"message": "WhatsApp configuration deleted successfully"},
             status=status.HTTP_204_NO_CONTENT,
         )
+
+
+class SalonWhatsappChatbotMessageLogListAPIView(ListAPIView):
+    serializer_class = SalonWhatsappChatbotMessageLogSerializer
+    permission_classes = [IsOwnerOrAdminOrStaff]
+    pagination_class = None
+
+    def get_queryset(self):
+        account = self.request.account
+        salon_uid = self.kwargs.get("salon_uid")
+        salon = get_object_or_404(Salon, uid=salon_uid, account=account)
+        if not salon:
+            return WhatsappChatbotMessageLog.objects.none()
+        return WhatsappChatbotMessageLog.objects.filter(chatbot__salon=salon)

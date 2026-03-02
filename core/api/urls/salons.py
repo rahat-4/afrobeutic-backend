@@ -33,9 +33,15 @@ from ..views.salons import (
     TopSellingServiceApiView,
     TopSellingProductApiView,
     SalonWhatsappView,
+    SalonWhatsappChatbotMessageLogListAPIView,
 )
 
 urlpatterns = [
+    path(
+        "/<uuid:salon_uid>/messages",
+        SalonWhatsappChatbotMessageLogListAPIView.as_view(),
+        name="salon.whatsapp-chatbot-message-log-list",
+    ),
     path(
         "/<uuid:salon_uid>/whatsapp",
         SalonWhatsappView.as_view(),

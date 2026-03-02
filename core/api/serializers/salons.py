@@ -1,6 +1,5 @@
-from datetime import datetime, timedelta, time
+from datetime import timedelta
 from decimal import Decimal
-from phonenumber_field.modelfields import PhoneNumberField
 
 from django.contrib.gis.geos import Point
 from django.db import transaction
@@ -9,7 +8,6 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.generics import get_object_or_404
 
-from apps.authentication.choices import AccountType
 from apps.salon.choices import (
     BookingStatus,
     CustomerType,
@@ -32,6 +30,7 @@ from apps.salon.models import (
     Customer,
     Booking,
 )
+from apps.thirdparty.models import WhatsappChatbotMessageLog
 
 from common.choices import CategoryType
 from common.serializers import (
@@ -41,7 +40,6 @@ from common.serializers import (
     ServiceSlimSerializer,
     MediaSlimSerializer,
 )
-from common.models import Category
 from common.utils import get_or_create_category
 
 
@@ -1297,3 +1295,11 @@ class ProductRevenueSerializer(serializers.Serializer):
     category_name = serializers.CharField()
     revenue = serializers.DecimalField(max_digits=12, decimal_places=2)
     booking_count = serializers.IntegerField()
+
+
+class SalonWhatsappChatbotMessageLogSerializer(serializers.ModelSerializer):
+    customer = CustomerSlimSerializer(read_only=True)
+
+    class Meta:
+        model = WhatsappChatbotMessageLog
+        fields = ["message", "media_url", "sent_at", "role", "customer"]
