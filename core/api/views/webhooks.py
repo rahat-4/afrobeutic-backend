@@ -178,7 +178,7 @@ class WhatsappCallbackView(APIView):
                     "status": "error",
                     "message": (
                         f"This chatbot has reached its message limit: "
-                        f"{bot.account.pricing_plan.whatsapp_messages_per_chatbot}"
+                        f"{bot.account.account_subscription.pricing_plan.whatsapp_messages_per_chatbot}"
                     ),
                 },
                 status=status.HTTP_403_FORBIDDEN,

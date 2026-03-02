@@ -58,8 +58,21 @@ class WhatsappChatbotConfig(BaseModel):
         """
         Return remaining messages allowed for this chatbot based on plan
         """
-        plan_limit = self.account.pricing_plan.whatsapp_messages_per_chatbot
-        return max(plan_limit - self.messages_sent_count(), 0)
+        from apps.billing.models import Subscription
+
+        try:
+            plan_limit = (
+                self.account.account_subscription.pricing_plan.whatsapp_messages_per_chatbot
+            )
+        except Subscription.DoesNotExist:
+            return 0  # No subscription means no messages allowed
+
+        remaining = max(plan_limit - self.messages_sent_count(), 0)
+
+        print(
+            f"Chatbot {self.chatbot_name} has sent {self.messages_sent_count()} messages. Plan limit is {plan_limit}. Remaining messages: {remaining}"
+        )
+        return remaining
 
     def has_remaining_messages(self):
         """Check if this chatbot can send more messages"""
