@@ -50,10 +50,6 @@ class CurrentAccountMiddleware(MiddlewareMixin):
         re.compile(r"^/static/.*$"),
         # Stripe and Whatsapp webhook
         re.compile(r"^/api/webhooks/.*$"),
-        # re.compile(r"^/api/webhooks/stripe/?$"),
-        # re.compile(r"^/api/webhooks/whatsapp-callback/?$"),
-        # re.compile(r"^/api/webhooks/whatsapp-fallback/?$"),
-        # re.compile(r"^/api/webhooks/whatsapp-callback-status/?$"),
     ]
 
     def is_excluded_path(self, path):
@@ -80,11 +76,16 @@ class CurrentAccountMiddleware(MiddlewareMixin):
             return
 
         account_id = request.headers.get("X-Account-Id")
-        if account_id:
-            try:
-                account = Account.objects.get(uid=account_id)
-                request.account = account
-            except Account.DoesNotExist:
-                return JsonResponse({"error": "Invalid account ID"}, status=400)
-        else:
-            return JsonResponse({"error": "Missing X-ACCOUNT-ID header"}, status=400)
+
+        user = getattr(request, "user", None)
+        if user and user.is_authenticated:
+            if account_id:
+                try:
+                    account = Account.objects.get(uid=account_id)
+                    request.account = account
+                except Account.DoesNotExist:
+                    return JsonResponse({"error": "Invalid account ID"}, status=400)
+            else:
+                return JsonResponse(
+                    {"error": "Missing X-ACCOUNT-ID header"}, status=400
+                )
