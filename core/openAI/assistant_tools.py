@@ -91,7 +91,7 @@ SALON_ASSISTANT_TOOLS = [
                         "description": "Preferred payment method.",
                     },
                 },
-                "required": ["booking_date", "booking_time", "service_ids"],
+                "required": ["booking_date", "booking_time"],
             },
         },
     },
