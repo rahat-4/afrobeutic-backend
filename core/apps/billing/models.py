@@ -23,8 +23,8 @@ class PricingPlan(BaseModel):
     salon_limit = models.PositiveIntegerField(default=1)
     whatsapp_chatbot_limit = models.PositiveIntegerField(default=0)
     whatsapp_messages_per_chatbot = models.PositiveIntegerField(default=0)
-    has_broadcasting = models.BooleanField(default=False)
-    broadcasting_message_limit = models.PositiveIntegerField(default=0)
+    # has_broadcasting = models.BooleanField(default=False)
+    # broadcasting_message_limit = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
     description = models.TextField(blank=True, null=True)
 

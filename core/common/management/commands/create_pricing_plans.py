@@ -17,8 +17,6 @@ class Command(BaseCommand):
                 "salon_limit": 1,
                 "whatsapp_chatbot_limit": 0,
                 "whatsapp_messages_per_chatbot": 0,
-                "has_broadcasting": False,
-                "broadcasting_message_limit": 0,
                 "description": "Custom plan based on your specific needs",
             },
             {
@@ -28,8 +26,6 @@ class Command(BaseCommand):
                 "salon_limit": 1,
                 "whatsapp_chatbot_limit": 0,
                 "whatsapp_messages_per_chatbot": 0,
-                "has_broadcasting": False,
-                "broadcasting_message_limit": 0,
                 "description": "Perfect for individual stylists starting out",
             },
             {
@@ -39,8 +35,6 @@ class Command(BaseCommand):
                 "salon_limit": 1,
                 "whatsapp_chatbot_limit": 1,
                 "whatsapp_messages_per_chatbot": 2000,
-                "has_broadcasting": False,
-                "broadcasting_message_limit": 0,
                 "description": "Advanced features for professional stylists",
             },
             # Salon Shop Plans
@@ -51,8 +45,6 @@ class Command(BaseCommand):
                 "salon_limit": 1,
                 "whatsapp_chatbot_limit": 0,
                 "whatsapp_messages_per_chatbot": 0,
-                "has_broadcasting": False,
-                "broadcasting_message_limit": 0,
                 "description": "Custom plan tailored to your salon network",
             },
             {
@@ -62,8 +54,6 @@ class Command(BaseCommand):
                 "salon_limit": 1,
                 "whatsapp_chatbot_limit": 1,
                 "whatsapp_messages_per_chatbot": 2000,
-                "has_broadcasting": True,
-                "broadcasting_message_limit": 150,
                 "description": "Great for small salon businesses",
             },
             {
@@ -73,8 +63,6 @@ class Command(BaseCommand):
                 "salon_limit": 3,
                 "whatsapp_chatbot_limit": 3,
                 "whatsapp_messages_per_chatbot": 2000,
-                "has_broadcasting": True,
-                "broadcasting_message_limit": 300,
                 "description": "Perfect for multi-location salons",
             },
         ]

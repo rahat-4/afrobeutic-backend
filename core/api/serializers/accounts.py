@@ -81,6 +81,8 @@ class AccountAccessSerializer(serializers.ModelSerializer):
 
 
 class AccountPricingPlanSerializer(serializers.ModelSerializer):
+    is_current_plan = serializers.SerializerMethodField()
+
     class Meta:
         model = PricingPlan
         fields = [
@@ -90,10 +92,22 @@ class AccountPricingPlanSerializer(serializers.ModelSerializer):
             "salon_limit",
             "whatsapp_chatbot_limit",
             "whatsapp_messages_per_chatbot",
-            "has_broadcasting",
-            "broadcasting_message_limit",
             "description",
+            "is_current_plan",
         ]
+
+    def get_is_current_plan(self, obj):
+        request = self.context.get("request")
+        if not request:
+            return False
+
+        account = request.account
+        subscription = getattr(account, "account_subscription", None)
+
+        if subscription and subscription.pricing_plan.uid == obj.uid:
+            return True
+
+        return False
 
 
 class AccountSubscriptionSerializer(serializers.ModelSerializer):

@@ -389,8 +389,6 @@ class AdminPricingPlanSerializer(serializers.ModelSerializer):
             "salon_limit",
             "whatsapp_chatbot_limit",
             "whatsapp_messages_per_chatbot",
-            "has_broadcasting",
-            "broadcasting_message_limit",
             "is_active",
             "description",
         ]
