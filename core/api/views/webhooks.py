@@ -1,6 +1,8 @@
 import logging
 import stripe
 from decouple import config
+from twilio.rest import Client as TwilioClient
+
 from django.conf import settings
 from django.core.mail import send_mail
 from django.http import JsonResponse
@@ -15,16 +17,63 @@ from rest_framework.views import APIView
 
 from apps.billing.utils import handle_payment_failed, handle_payment_success
 from apps.salon.models import Customer
-from apps.thirdparty.models import WhatsappChatbotConfig, WhatsappChatbotMessageLog
+from apps.thirdparty.models import (
+    MetaConfig,
+    WhatsappChatbotConfig,
+    WhatsappChatbotMessageLog,
+)
 from apps.thirdparty.send_message import send_whatsapp_reply
 from apps.thirdparty.choices import WhatsappChatbotMessageRole
 
 from common.choices import CategoryType
 from common.utils import get_or_create_category
-from common.crypto import decrypt_data
+from common.crypto import decrypt_data, encrypt_data
 
 
 logger = logging.getLogger(__name__)
+
+
+def _crypto_password() -> str:
+    return config("CRYPTO_PASSWORD")
+
+
+def _encrypt(value: str) -> dict:
+    return encrypt_data(value, _crypto_password())
+
+
+def _decrypt(blob: dict) -> str:
+    return decrypt_data(blob, _crypto_password())
+
+
+def _log_message(
+    bot: WhatsappChatbotConfig,
+    customer: Customer,
+    message: str,
+    role: str,
+) -> None:
+    try:
+        WhatsappChatbotMessageLog.objects.create(
+            chatbot=bot,
+            customer=customer,
+            message=message,
+            role=role,
+        )
+    except Exception as exc:
+        logger.warning("Could not save message log: %s", exc)
+
+
+def _send_whatsapp_reply(
+    account_sid: str,
+    auth_token: str,
+    to: str,
+    from_: str,
+    body: str,
+) -> None:
+    try:
+        client = TwilioClient(account_sid, auth_token)
+        client.messages.create(body=body, from_=from_, to=to)
+    except Exception as exc:
+        logger.error("Failed to send WhatsApp reply to %s: %s", to, exc)
 
 
 @csrf_exempt
@@ -70,75 +119,72 @@ def stripe_webhook(request):
 
 @method_decorator(csrf_exempt, name="dispatch")
 class WhatsappCallbackView(APIView):
+    """
+    Receives inbound WhatsApp messages from Twilio.
+
+    Routing:  Twilio sends To=whatsapp:+SALON_NUMBER.
+              We look up MetaConfig by whatsapp_number → find the salon
+              → find its chatbot config.
+
+    Replies go out through the salon's own Twilio subaccount credentials
+    (stored encrypted in MetaConfig), NOT the master account.
+    """
+
     permission_classes = []
 
-    def _log_message(
-        self,
-        bot: WhatsappChatbotConfig,
-        customer: Customer,
-        message: str,
-        role: str,
-    ) -> None:
-        """Persist a message to the log table (fire-and-forget style)."""
-        try:
-            WhatsappChatbotMessageLog.objects.create(
-                chatbot=bot,
-                customer=customer,
-                message=message,
-                role=role,
-            )
-        except Exception as exc:
-            logger.warning("Could not save message log: %s", exc)
-
     def post(self, request, *args, **kwargs):
-        # ── 1. Parse incoming Twilio payload ─────────────────────────────────
+        # ── 1. Parse Twilio payload ───────────────────────────────────────────
         profile_name = request.data.get("ProfileName", "").strip()
-        whatsapp_number = request.data.get("From", "").strip()
+        from_number = request.data.get("From", "").strip()  # customer's WA number
         incoming_message = request.data.get("Body", "").strip()
-        whatsapp_sender_number = request.data.get("To", "").strip()
+        to_number = request.data.get("To", "").strip()  # salon's WA number
 
-        if not all([whatsapp_number, incoming_message, whatsapp_sender_number]):
+        print("------------------------------------------------>", incoming_message)
+
+        if not all([from_number, incoming_message, to_number]):
             logger.warning(
                 "WhatsApp callback missing required fields: %s", request.data
             )
             return JsonResponse(
                 {"status": "error", "message": "Missing required fields"},
-                status=status.HTTP_400_BAD_REQUEST,
+                status=400,
             )
 
-        # ── 2. Resolve chatbot config ─────────────────────────────────────────
-        bot = (
-            WhatsappChatbotConfig.objects.filter(
-                whatsapp_sender_number=whatsapp_sender_number
-            )
-            .select_related("salon", "account")
-            .first()
-        )
+        # ── 2. Route to salon via MetaConfig ──────────────────────────────────
+        # Strip "whatsapp:" prefix Twilio adds to the To field
+        salon_number = to_number.replace("whatsapp:", "").strip()
 
-        if not bot:
-            logger.error(
-                "No chatbot config found for number: %s", whatsapp_sender_number
+        try:
+            meta = MetaConfig.objects.select_related("salon", "account").get(
+                whatsapp_number=salon_number
             )
+        except MetaConfig.DoesNotExist:
+            logger.error("No MetaConfig found for number: %s", salon_number)
             return JsonResponse(
-                {"status": "error", "message": "Chatbot configuration not found"},
-                status=status.HTTP_404_NOT_FOUND,
+                {"status": "error", "message": "Salon not found for this number"},
+                status=404,
             )
 
-        # ── 3. Resolve customer ───────────────────────────────────────────────
-        account = bot.account
-        salon = bot.salon
-        phone = whatsapp_number.replace("whatsapp:", "").strip()
+        salon = meta.salon
+        account = meta.account
 
+        # ── 3. Resolve chatbot config ─────────────────────────────────────────
+        bot = getattr(salon, "whatsapp_chatbot_config", None)
+        if not bot or not bot.is_active:
+            logger.warning("Chatbot inactive or missing for salon: %s", salon.name)
+            return JsonResponse({"status": "ok"})
+
+        # ── 4. Resolve or create customer ─────────────────────────────────────
+        customer_phone = from_number.replace("whatsapp:", "").strip()
         name_parts = profile_name.split(maxsplit=1)
-        first_name = name_parts[0] if name_parts else phone
+        first_name = name_parts[0] if name_parts else customer_phone
         last_name = name_parts[1] if len(name_parts) > 1 else ""
 
         source = get_or_create_category(
             "Whatsapp", account, category_type=CategoryType.CUSTOMER_SOURCE
         )
-
         customer, _ = Customer.objects.get_or_create(
-            phone=phone,
+            phone=customer_phone,
             defaults={
                 "first_name": first_name,
                 "last_name": last_name,
@@ -148,43 +194,18 @@ class WhatsappCallbackView(APIView):
             },
         )
 
-        # ── 4. Log incoming message ───────────────────────────────────────────
-        self._log_message(
+        # ── 5. Log inbound message ────────────────────────────────────────────
+        _log_message(
             bot, customer, incoming_message, WhatsappChatbotMessageRole.CUSTOMER
         )
 
-        # ── 6.5. Check chatbot message limit ─────────────────────────────────
+        # ── 6. Check message quota ────────────────────────────────────────────
         if not bot.has_remaining_messages():
-            # Optional: notify salon owner
-            try:
-                send_mail(
-                    subject="Chatbot message limit reached",
-                    message=f"Your WhatsApp Chatbot '{bot.chatbot_name}' has reached its message limit.",
-                    from_email="no-reply@yourapp.com",
-                    recipient_list=[
-                        bot.salon.owner_email
-                    ],  # make sure this field exists
-                    fail_silently=True,
-                )
-            except Exception as exc:
-                logger.warning("Failed to notify salon owner about limit: %s", exc)
+            logger.warning("Message limit reached for salon: %s", salon.name)
+            # Silently drop — customer already got a reply from their last message
+            return JsonResponse({"status": "ok"})
 
-            # Block sending the message
-            logger.warning(
-                "Chatbot %s reached message limit. Message not sent.", bot.chatbot_name
-            )
-            return JsonResponse(
-                {
-                    "status": "error",
-                    "message": (
-                        f"This chatbot has reached its message limit: "
-                        f"{bot.account.account_subscription.pricing_plan.whatsapp_messages_per_chatbot}"
-                    ),
-                },
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        # ── 5. Run the OpenAI assistant ───────────────────────────────────────
+        # ── 7. Run OpenAI assistant ───────────────────────────────────────────
         try:
             from openAI.assistant_service import run_assistant
 
@@ -194,48 +215,21 @@ class WhatsappCallbackView(APIView):
                 user_message=incoming_message,
             )
         except Exception as exc:
-            logger.exception("Assistant run failed for customer %s: %s", phone, exc)
+            logger.exception("Assistant run failed for %s: %s", customer_phone, exc)
             reply = (
                 "Sorry, we're experiencing a technical issue. "
                 "Please try again or call us directly."
             )
 
-        # ── 6. Log outbound reply ─────────────────────────────────────────────
-        self._log_message(bot, customer, reply, WhatsappChatbotMessageRole.BOT)
+        # ── 8. Log outbound reply ─────────────────────────────────────────────
+        _log_message(bot, customer, reply, WhatsappChatbotMessageRole.ASSISTANT)
 
-        # ── 7. Send reply via Twilio ──────────────────────────────────────────
-        # Get twilio sid and auth token
-        # try:
-        #     crypto_password = config("CRYPTO_PASSWORD")
-        #     twilio_sid = decrypt_data(
-        #         account.account_meta_config.account_sid, crypto_password
-        #     )
-        #     twilio_token = decrypt_data(
-        #         account.account_meta_config.auth_token, crypto_password
-        #     )
-        # except Exception as exc:
-        #     logger.error(
-        #         "Failed to decrypt Twilio credentials for account %s: %s",
-        #         account.name,
-        #         exc,
-        #     )
-        #     return JsonResponse(
-        #         {"status": "error", "message": "Chatbot configuration error"},
-        #         status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        #     )
-
-        twilio_sid = config("TWILIO_ACCOUNT_SID")
-        twilio_token = config("TWILIO_AUTH_TOKEN")
-
-        print("------------whatsapp_number-------------", whatsapp_number)
-        print("--------whatsapp_sender_number-----------------", whatsapp_sender_number)
-        print("------------reply-------------", reply)
-
-        send_whatsapp_reply(
-            twilio_sid=twilio_sid,
-            twilio_token=twilio_token,
-            to=whatsapp_number,
-            from_=whatsapp_sender_number,
+        # ── 9. Send reply using salon's own Twilio subaccount ─────────────────
+        _send_whatsapp_reply(
+            account_sid=_decrypt(meta.account_sid),
+            auth_token=_decrypt(meta.auth_token),
+            to=from_number,  # back to the customer
+            from_=to_number,  # from the salon's number
             body=reply,
         )
 

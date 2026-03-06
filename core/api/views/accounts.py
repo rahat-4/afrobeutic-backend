@@ -1,6 +1,5 @@
 import stripe
 from datetime import timedelta
-from decouple import config
 from decimal import Decimal
 
 from django.conf import settings
@@ -26,18 +25,14 @@ from apps.billing.models import PricingPlan, PaymentTransaction, PaymentCard
 from apps.billing.choices import PaymentTransactionStatus, SubscriptionStatus
 from apps.billing.utils import (
     get_or_create_stripe_customer,
-    attach_payment_method,
     charge_customer,
 )
 from apps.authentication.emails import send_account_invitation_email
 from apps.salon.models import Booking
 from apps.salon.models import BookingStatus
 from apps.support.models import AccountSupportTicket
-from apps.thirdparty.models import MetaConfig
-from apps.thirdparty.utils import create_twilio_subaccount
 
 
-from common.crypto import encrypt_data, decrypt_data
 from common.permissions import IsOwner, IsOwnerOrAdmin, IsOwnerOrAdminOrStaff
 
 from ..serializers.accounts import (
@@ -265,95 +260,6 @@ class AccountPaymentCardDetailView(RetrieveUpdateDestroyAPIView):
                     account.stripe_customer_id,
                     invoice_settings={"default_payment_method": new_default.card_token},
                 )
-
-
-class AccountMetaConfigView(APIView):
-    permission_classes = [IsOwnerOrAdmin]
-
-    def get_crypto_password(self):
-        return config("CRYPTO_PASSWORD")
-
-    def decrypt_meta_config(self, meta_config):
-        crypto_password = self.get_crypto_password()
-        return {
-            "waba_id": decrypt_data(meta_config.waba_id, crypto_password),
-            "account_sid": decrypt_data(meta_config.account_sid, crypto_password),
-            "auth_token": decrypt_data(meta_config.auth_token, crypto_password),
-        }
-
-    def encrypt_meta_config(self, waba_id, account_sid, auth_token):
-        crypto_password = self.get_crypto_password()
-        return {
-            "waba_id": encrypt_data(waba_id, crypto_password),
-            "account_sid": encrypt_data(account_sid, crypto_password),
-            "auth_token": encrypt_data(auth_token, crypto_password),
-        }
-
-    def get(self, request):
-        meta_config = getattr(request.account, "account_meta_config", None)
-
-        if not meta_config:
-            return Response(
-                {"detail": "Meta configuration not available."},
-                status=status.HTTP_200_OK,
-            )
-
-        return Response(
-            self.decrypt_meta_config(meta_config),
-            status=status.HTTP_200_OK,
-        )
-
-    def post(self, request):
-        account = request.account
-        waba_id = request.data.get("waba_id")
-
-        if not waba_id:
-            return Response(
-                {"error": "Missing waba_id"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Prevent duplicate creation
-        if hasattr(account, "account_meta_config"):
-            return Response(
-                {"error": "Meta configuration already exists."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        with transaction.atomic():
-            subaccount = create_twilio_subaccount(friendly_name=account.name)
-
-            encrypted_data_dict = self.encrypt_meta_config(
-                waba_id=waba_id,
-                account_sid=subaccount["account_sid"],
-                auth_token=subaccount["auth_token"],
-            )
-
-            MetaConfig.objects.create(
-                account=account,
-                **encrypted_data_dict,
-            )
-
-        return Response(
-            {"message": "Meta configuration created successfully."},
-            status=status.HTTP_201_CREATED,
-        )
-
-    def delete(self, request):
-        account = request.account
-
-        if not hasattr(account, "account_meta_config"):
-            return Response(
-                {"error": "Meta configuration not found."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        account.account_meta_config.delete()
-
-        return Response(
-            {"message": "Meta configuration deleted successfully."},
-            status=status.HTTP_200_OK,
-        )
 
 
 # GET /api/dashboard/?bookings_filter=last_7_days

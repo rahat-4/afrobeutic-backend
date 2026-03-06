@@ -9,7 +9,6 @@ from ..views.accounts import (
     AccountPricingPlanListView,
     AccountSubscriptionDetailView,
     AccountBillingHistoryListView,
-    AccountMetaConfigView,
     AccountDashboardApiView,
     AccountPaymentCardListView,
     AccountPaymentCardDetailView,
@@ -18,11 +17,6 @@ from ..views.accounts import (
 
 urlpatterns = [
     path("/dashboard", AccountDashboardApiView.as_view(), name="account.dashboard"),
-    path(
-        "/meta-config",
-        AccountMetaConfigView.as_view(),
-        name="account.meta-config",
-    ),
     path("/cards", AccountPaymentCardListView.as_view()),
     path("/cards/<uuid:card_uid>", AccountPaymentCardDetailView.as_view()),
     path(

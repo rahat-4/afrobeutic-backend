@@ -32,6 +32,7 @@ from ..views.salons import (
     TopEmployeeApiView,
     TopSellingServiceApiView,
     TopSellingProductApiView,
+    SalonMetaConfigView,
     SalonWhatsappView,
     SalonWhatsappChatbotMessageLogListAPIView,
 )
@@ -46,6 +47,11 @@ urlpatterns = [
         "/<uuid:salon_uid>/whatsapp",
         SalonWhatsappView.as_view(),
         name="salon.whatsapp",
+    ),
+    path(
+        "/<uuid:salon_uid>/meta-config",
+        SalonMetaConfigView.as_view(),
+        name="salon.meta-config",
     ),
     path(
         "/<uuid:salon_uid>/analytics/top-selling-products",
