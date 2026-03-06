@@ -1643,7 +1643,7 @@ class SalonWhatsappView(APIView):
                     access_token=self._encrypt(access_token),
                     account_sid=self._encrypt(subaccount["account_sid"]),
                     auth_token=self._encrypt(subaccount["auth_token"]),
-                    sender_sid=self._encrypt(sender.sid),
+                    sender_sid=sender.sid,
                     whatsapp_number=f"whatsapp:{whatsapp_number}",
                     status=sender.status,
                     created_by=request.user,
@@ -1676,14 +1676,13 @@ class SalonWhatsappView(APIView):
 
         config_obj = self._get_meta_config(salon)
 
-        sender_sid = self._decrypt(config_obj.sender_sid)
         account_sid = self._decrypt(config_obj.account_sid)
         auth_token = self._decrypt(config_obj.auth_token)
 
         try:
             with transaction.atomic():
                 client = TwilioClient(account_sid, auth_token)
-                client.messaging.v2.channels_senders(sender_sid).delete()
+                client.messaging.v2.channels_senders(config_obj.sender_sid).delete()
                 config_obj.delete()
 
         except Exception as e:

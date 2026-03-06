@@ -4,7 +4,6 @@ from decouple import config
 from twilio.rest import Client as TwilioClient
 
 from django.conf import settings
-from django.core.mail import send_mail
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -22,11 +21,11 @@ from apps.thirdparty.models import (
     WhatsappChatbotConfig,
     WhatsappChatbotMessageLog,
 )
-from apps.thirdparty.send_message import send_whatsapp_reply
 from apps.thirdparty.choices import WhatsappChatbotMessageRole
 
 from common.choices import CategoryType
 from common.utils import get_or_create_category
+from common.meta_utils import sync_sender_status
 from common.crypto import decrypt_data, encrypt_data
 
 
@@ -241,8 +240,39 @@ class WhatsappStatusCallbackView(APIView):
     permission_classes = []
 
     def post(self, request, *args, **kwargs):
-        # print("request=================================>", request.data)
-        return Response({"status": "ok"})
+        data = request.POST
+
+        message_sid = data.get("MessageSid")
+        message_status = data.get("MessageStatus")
+        to_number = data.get("To")
+        from_number = data.get("From")
+        error_code = data.get("ErrorCode")
+        error_message = data.get("ErrorMessage")
+
+        logger.info(
+            "WhatsApp Status Callback: SID=%s Status=%s To=%s From=%s",
+            message_sid,
+            message_status,
+            to_number,
+            from_number,
+        )
+
+        # Optional: update message status in DB
+        # Example:
+        # Message.objects.filter(sid=message_sid).update(status=message_status)
+
+        if error_code:
+            logger.error(
+                "WhatsApp message error: SID=%s Code=%s Message=%s",
+                message_sid,
+                error_code,
+                error_message,
+            )
+
+        return Response(
+            {"status": "received"},
+            status=status.HTTP_200_OK,
+        )
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -250,5 +280,46 @@ class WhatsappFallbackView(APIView):
     permission_classes = []
 
     def post(self, request, *args, **kwargs):
-        print("request=================================>", request.data)
-        return Response({"status": "ok"})
+        data = request.POST
+
+        message_sid = data.get("MessageSid")
+        from_number = data.get("From")
+        to_number = data.get("To")
+        body = data.get("Body")
+        profile_name = data.get("ProfileName")
+
+        logger.info(
+            "Incoming WhatsApp Message: SID=%s From=%s To=%s Body=%s",
+            message_sid,
+            from_number,
+            to_number,
+            body,
+        )
+
+        # Example: save incoming message
+        # IncomingMessage.objects.create(
+        #     message_sid=message_sid,
+        #     from_number=from_number,
+        #     to_number=to_number,
+        #     body=body,
+        # )
+
+        return Response(
+            {"status": "received"},
+            status=status.HTTP_200_OK,
+        )
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class WhatsappSenderStatusSyncView(APIView):
+    permission_classes = []
+
+    def post(self, request, *args, **kwargs):
+
+        for config in MetaConfig.objects.all():
+            try:
+                sync_sender_status(config)
+            except Exception as e:
+                print("Sender status sync failed:", e)
+
+        return Response({"status": "synced"})

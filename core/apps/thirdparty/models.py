@@ -21,7 +21,7 @@ class MetaConfig(BaseModel):
     account_sid = models.JSONField(default=dict)
     auth_token = models.JSONField(default=dict)
     whatsapp_number = models.CharField(max_length=50, unique=True, db_index=True)
-    sender_sid = models.JSONField(default=dict)
+    sender_sid = models.CharField(max_length=255)
     status = models.CharField(max_length=255)
 
     created_by = models.ForeignKey(

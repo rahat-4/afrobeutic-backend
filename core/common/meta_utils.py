@@ -1,6 +1,8 @@
 import logging
 import requests
 from django.conf import settings
+from twilio.rest import Client
+from .crypto import decrypt_data
 
 logger = logging.getLogger(__name__)
 
@@ -97,3 +99,16 @@ def fetch_whatsapp_number(phone_number_id: str, access_token: str) -> str:
         "Fetched WhatsApp number %s for phone_number_id %s", normalised, phone_number_id
     )
     return normalised
+
+
+def sync_sender_status(meta_config):
+    account_sid = decrypt_data(meta_config.account_sid)
+    auth_token = decrypt_data(meta_config.auth_token)
+    sender_sid = decrypt_data(meta_config.sender_sid)
+
+    client = Client(account_sid, auth_token)
+
+    sender = client.messaging.v2.channels_senders(sender_sid).fetch()
+
+    meta_config.status = sender.status
+    meta_config.save(update_fields=["status"])

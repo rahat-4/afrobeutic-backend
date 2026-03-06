@@ -3,8 +3,9 @@ from django.urls import path
 from ..views.webhooks import (
     stripe_webhook,
     WhatsappCallbackView,
-    WhatsappStatusCallbackView,
     WhatsappFallbackView,
+    WhatsappStatusCallbackView,
+    WhatsappSenderStatusSyncView,
 )
 
 urlpatterns = [
@@ -15,5 +16,10 @@ urlpatterns = [
         "/whatsapp-callback-status",
         WhatsappStatusCallbackView.as_view(),
         name="whatsapp-status",
+    ),
+    path(
+        "/whatsapp-status",
+        WhatsappSenderStatusSyncView.as_view(),
+        name="whatsapp-status-sync",
     ),
 ]
