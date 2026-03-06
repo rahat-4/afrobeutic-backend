@@ -42,7 +42,6 @@ from apps.salon.models import (
 )
 
 from apps.thirdparty.models import (
-    MetaConfig,
     WhatsappChatbotConfig,
     WhatsappChatbotMessageLog,
 )
@@ -1458,7 +1457,7 @@ class TopSellingProductApiView(APIView):
         )
 
 
-class SalonMetaConfigView(APIView):
+class SalonWhatsappChatbotConfigView(APIView):
     def _get_salon(self, account, salon_uid):
         return get_object_or_404(
             Salon,
@@ -1515,8 +1514,8 @@ class SalonWhatsappView(APIView):
     def _get_salon(self, account, salon_uid):
         return get_object_or_404(Salon, uid=salon_uid, account=account)
 
-    def _get_meta_config(self, salon):
-        return get_object_or_404(MetaConfig, salon=salon)
+    def _get_whatsapp_config(self, salon):
+        return get_object_or_404(WhatsappChatbotConfig, salon=salon)
 
     def _validate_required_fields(self, data, fields):
         missing = [f for f in fields if not data.get(f)]
@@ -1548,7 +1547,7 @@ class SalonWhatsappView(APIView):
         account = request.account
         salon = self._get_salon(account, salon_uid)
 
-        config_obj = self._get_meta_config(salon)
+        config_obj = self._get_whatsapp_config(salon)
 
         return Response(
             self._serialize_config(config_obj),
@@ -1563,7 +1562,7 @@ class SalonWhatsappView(APIView):
         account = request.account
         salon = self._get_salon(account, salon_uid)
 
-        if MetaConfig.objects.filter(
+        if WhatsappChatbotConfig.objects.filter(
             salon=salon,
             account=account,
         ).exists():
@@ -1637,7 +1636,7 @@ class SalonWhatsappView(APIView):
                     )
                 )
 
-                config_obj = MetaConfig.objects.create(
+                config_obj = WhatsappChatbotConfig.objects.create(
                     waba_id=self._encrypt(waba_id),
                     phone_number_id=self._encrypt(phone_number_id),
                     access_token=self._encrypt(access_token),
@@ -1646,6 +1645,7 @@ class SalonWhatsappView(APIView):
                     sender_sid=sender.sid,
                     whatsapp_number=f"whatsapp:{whatsapp_number}",
                     status=sender.status,
+                    chatbot_name=salon.name[:64],
                     created_by=request.user,
                     salon=salon,
                     account=account,
@@ -1674,7 +1674,7 @@ class SalonWhatsappView(APIView):
         account = request.account
         salon = self._get_salon(account, salon_uid)
 
-        config_obj = self._get_meta_config(salon)
+        config_obj = self._get_whatsapp_config(salon)
 
         account_sid = self._decrypt(config_obj.account_sid)
         auth_token = self._decrypt(config_obj.auth_token)

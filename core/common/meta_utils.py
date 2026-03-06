@@ -101,14 +101,14 @@ def fetch_whatsapp_number(phone_number_id: str, access_token: str) -> str:
     return normalised
 
 
-def sync_sender_status(meta_config):
-    account_sid = decrypt_data(meta_config.account_sid)
-    auth_token = decrypt_data(meta_config.auth_token)
-    sender_sid = decrypt_data(meta_config.sender_sid)
+def sync_sender_status(chatbot_config):
+    account_sid = decrypt_data(chatbot_config.account_sid)
+    auth_token = decrypt_data(chatbot_config.auth_token)
+    sender_sid = decrypt_data(chatbot_config.sender_sid)
 
     client = Client(account_sid, auth_token)
 
     sender = client.messaging.v2.channels_senders(sender_sid).fetch()
 
-    meta_config.status = sender.status
-    meta_config.save(update_fields=["status"])
+    chatbot_config.status = sender.status
+    chatbot_config.save(update_fields=["status"])

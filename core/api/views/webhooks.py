@@ -17,7 +17,6 @@ from rest_framework.views import APIView
 from apps.billing.utils import handle_payment_failed, handle_payment_success
 from apps.salon.models import Customer
 from apps.thirdparty.models import (
-    MetaConfig,
     WhatsappChatbotConfig,
     WhatsappChatbotMessageLog,
 )
@@ -122,11 +121,11 @@ class WhatsappCallbackView(APIView):
     Receives inbound WhatsApp messages from Twilio.
 
     Routing:  Twilio sends To=whatsapp:+SALON_NUMBER.
-              We look up MetaConfig by whatsapp_number → find the salon
+              We look up MetaCoWhatsappChatbotConfignfig by whatsapp_number → find the salon
               → find its chatbot config.
 
     Replies go out through the salon's own Twilio subaccount credentials
-    (stored encrypted in MetaConfig), NOT the master account.
+    (stored encrypted in WhatsappChatbotConfig), NOT the master account.
     """
 
     permission_classes = []
@@ -149,26 +148,24 @@ class WhatsappCallbackView(APIView):
                 status=400,
             )
 
-        # ── 2. Route to salon via MetaConfig ──────────────────────────────────
+        # ── 2. Route to salon via WhatsappChatbotConfig ──────────────────────────────────
         # Strip "whatsapp:" prefix Twilio adds to the To field
-        salon_number = to_number.replace("whatsapp:", "").strip()
+        # salon_number = to_number.replace("whatsapp:", "").strip()
 
         try:
-            meta = MetaConfig.objects.select_related("salon", "account").get(
-                whatsapp_number=salon_number
+            bot = WhatsappChatbotConfig.objects.select_related("salon", "account").get(
+                whatsapp_number=to_number
             )
-        except MetaConfig.DoesNotExist:
-            logger.error("No MetaConfig found for number: %s", salon_number)
+        except WhatsappChatbotConfig.DoesNotExist:
+            logger.error("No WhatsappChatbotConfig found for number: %s", to_number)
             return JsonResponse(
                 {"status": "error", "message": "Salon not found for this number"},
                 status=404,
             )
 
-        salon = meta.salon
-        account = meta.account
+        salon = bot.salon
+        account = bot.account
 
-        # ── 3. Resolve chatbot config ─────────────────────────────────────────
-        bot = getattr(salon, "whatsapp_chatbot_config", None)
         if not bot or not bot.is_active:
             logger.warning("Chatbot inactive or missing for salon: %s", salon.name)
             return JsonResponse({"status": "ok"})
@@ -221,12 +218,12 @@ class WhatsappCallbackView(APIView):
             )
 
         # ── 8. Log outbound reply ─────────────────────────────────────────────
-        _log_message(bot, customer, reply, WhatsappChatbotMessageRole.ASSISTANT)
+        _log_message(bot, customer, reply, WhatsappChatbotMessageRole.BOT)
 
         # ── 9. Send reply using salon's own Twilio subaccount ─────────────────
         _send_whatsapp_reply(
-            account_sid=_decrypt(meta.account_sid),
-            auth_token=_decrypt(meta.auth_token),
+            account_sid=_decrypt(bot.account_sid),
+            auth_token=_decrypt(bot.auth_token),
             to=from_number,  # back to the customer
             from_=to_number,  # from the salon's number
             body=reply,
@@ -316,7 +313,7 @@ class WhatsappSenderStatusSyncView(APIView):
 
     def post(self, request, *args, **kwargs):
 
-        for config in MetaConfig.objects.all():
+        for config in WhatsappChatbotConfig.objects.all():
             try:
                 sync_sender_status(config)
             except Exception as e:

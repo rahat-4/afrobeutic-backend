@@ -5,16 +5,12 @@ from common.models import BaseModel
 
 from apps.salon.models import Account, Salon, Customer
 
-from .choices import (
-    WhatsappChatbotStatus,
-    WhatsappChatbotMessageRole,
-    WhatsappSenderStatus,
-)
+from .choices import WhatsappChatbotMessageRole
 
 User = get_user_model()
 
 
-class MetaConfig(BaseModel):
+class WhatsappChatbotConfig(BaseModel):
     waba_id = models.JSONField(default=dict)
     phone_number_id = models.JSONField(default=dict)
     access_token = models.JSONField(default=dict)
@@ -23,6 +19,9 @@ class MetaConfig(BaseModel):
     whatsapp_number = models.CharField(max_length=50, unique=True, db_index=True)
     sender_sid = models.CharField(max_length=255)
     status = models.CharField(max_length=255)
+    assistant_id = models.JSONField(default=dict, blank=True, null=True)
+    chatbot_name = models.CharField(max_length=255, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
 
     created_by = models.ForeignKey(
         User,
@@ -40,40 +39,6 @@ class MetaConfig(BaseModel):
         Account,
         on_delete=models.CASCADE,
         related_name="meta_configs",
-    )
-
-    def __str__(self):
-        return f"MetaConfig — {self.salon.name} ({self.whatsapp_number})"
-
-
-class WhatsappChatbotConfig(BaseModel):
-    """
-    Runtime configuration for the OpenAI-powered chatbot attached to a salon.
-    Linked to MetaConfig for credentials; stores the OpenAI assistant_id so
-    the assistant is only created once per salon.
-    """
-
-    chatbot_name = models.CharField(max_length=255, blank=True, null=True)
-    # Stores {"id": "asst_xxx"} — populated on first assistant creation
-    assistant_id = models.JSONField(default=dict, blank=True, null=True)
-    is_active = models.BooleanField(default=True)
-
-    created_by = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="created_whatsapp_chatbot_configs",
-    )
-    salon = models.OneToOneField(
-        Salon,
-        on_delete=models.CASCADE,
-        related_name="whatsapp_chatbot_config",
-    )
-    account = models.ForeignKey(
-        Account,
-        on_delete=models.CASCADE,
-        related_name="whatsapp_chatbot_configs",
     )
 
     # ── Billing helpers ───────────────────────────────────────────────────────
