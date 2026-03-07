@@ -75,7 +75,7 @@ def get_or_create_assistant(salon: Salon) -> str:
     If not yet created, create it and persist the ID.
     """
     print("==========================>", get_runtime_context(salon))
-    config = salon.salon_whatsapp_chatbot_config
+    config = salon.salon_chatbot_config
     assistant_id = config.assistant_id.get("id") if config.assistant_id else None
 
     instructions = SALON_ASSISTANT_INSTRUCTIONS.replace("{salon_name}", salon.name)

@@ -8,4 +8,4 @@ class WhatsappChatbotConfigSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = WhatsappChatbotConfig
-        fields = ["chatbot_name", "salon"]
+        fields = ["chatbot_name", "whatsapp_number", "status", "salon"]

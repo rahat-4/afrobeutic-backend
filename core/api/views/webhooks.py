@@ -311,7 +311,7 @@ class WhatsappFallbackView(APIView):
 class WhatsappSenderStatusSyncView(APIView):
     permission_classes = []
 
-    def post(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
 
         for config in WhatsappChatbotConfig.objects.all():
             try:

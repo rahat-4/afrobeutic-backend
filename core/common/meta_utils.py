@@ -102,9 +102,9 @@ def fetch_whatsapp_number(phone_number_id: str, access_token: str) -> str:
 
 
 def sync_sender_status(chatbot_config):
-    account_sid = decrypt_data(chatbot_config.account_sid)
-    auth_token = decrypt_data(chatbot_config.auth_token)
-    sender_sid = decrypt_data(chatbot_config.sender_sid)
+    account_sid = decrypt_data(chatbot_config.account_sid, settings.CRYPTO_PASSWORD)
+    auth_token = decrypt_data(chatbot_config.auth_token, settings.CRYPTO_PASSWORD)
+    sender_sid = chatbot_config.sender_sid
 
     client = Client(account_sid, auth_token)
 

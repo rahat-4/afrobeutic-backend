@@ -28,17 +28,17 @@ class WhatsappChatbotConfig(BaseModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="created_meta_configs",
+        related_name="created_chatbot_configs",
     )
     salon = models.OneToOneField(
         Salon,
         on_delete=models.CASCADE,
-        related_name="meta_config",
+        related_name="salon_chatbot_config",
     )
     account = models.ForeignKey(
         Account,
         on_delete=models.CASCADE,
-        related_name="meta_configs",
+        related_name="account_chatbot_config",
     )
 
     # ── Billing helpers ───────────────────────────────────────────────────────
