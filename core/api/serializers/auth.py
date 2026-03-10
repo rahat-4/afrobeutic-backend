@@ -110,6 +110,7 @@ class AccountSlimSerializer(serializers.ModelSerializer):
 
 class MeSerializer(serializers.ModelSerializer):
     account = AccountSlimSerializer(source="memberships.first.account")
+    is_salon_limit_reached = serializers.SerializerMethodField()
     role = serializers.SerializerMethodField()
 
     class Meta:
@@ -123,6 +124,7 @@ class MeSerializer(serializers.ModelSerializer):
             "role",
             "country",
             "account",
+            "is_salon_limit_reached",
         ]
         read_only_fields = ["uid", "email", "role"]
 
@@ -138,6 +140,17 @@ class MeSerializer(serializers.ModelSerializer):
         # 🔥 Remove account field for admin or staff
         if user.is_admin or user.is_staff:
             self.fields.pop("account", None)
+
+    def get_is_salon_limit_reached(self, obj):
+        account = obj.memberships.first().account
+        subscription = getattr(account, "account_subscription", None)
+
+        if subscription:
+            salon_limit = subscription.pricing_plan.salon_limit
+            current_salon_count = account.account_salons.count()
+            return current_salon_count >= salon_limit
+
+        return False
 
     def get_role(self, obj):
         user = self.context.get("request").user

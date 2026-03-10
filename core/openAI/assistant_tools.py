@@ -57,7 +57,7 @@ SALON_ASSISTANT_TOOLS = [
             "name": "make_reservation",
             "description": (
                 "Create a new booking for the customer. You MUST call "
-                "get_services_and_products first and confirm the chosen services/products"
+                "get_services_and_products first and confirm the chosen services/products (if any) and the date/time"
                 "with the customer before calling this function."
             ),
             "parameters": {

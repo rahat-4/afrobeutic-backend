@@ -1528,11 +1528,17 @@ class SalonWhatsappView(APIView):
     def _decrypt(self, value):
         return decrypt_data(value, self._crypto_password())
 
-    def _serialize_config(self, config):
+    def _serialize_config(self, account, config):
         return {
             "salon": config.salon.name,
             "whatsapp_number": config.whatsapp_number,
             "status": config.status,
+            "message_limit": (
+                account.account_subscription.pricing_plan.whatsapp_messages_per_chatbot
+                if account.account_subscription
+                else None
+            ),
+            "remaining_messages": config.remaining_messages(),
             "created_by": (
                 config.created_by.get_full_name() if config.created_by else None
             ),
@@ -1550,7 +1556,7 @@ class SalonWhatsappView(APIView):
         config_obj = self._get_whatsapp_config(salon)
 
         return Response(
-            self._serialize_config(config_obj),
+            self._serialize_config(account, config_obj),
             status=status.HTTP_200_OK,
         )
 
@@ -1661,7 +1667,7 @@ class SalonWhatsappView(APIView):
         return Response(
             {
                 "message": "Meta config registered successfully",
-                **self._serialize_config(config_obj),
+                **self._serialize_config(account, config_obj),
             },
             status=status.HTTP_201_CREATED,
         )
