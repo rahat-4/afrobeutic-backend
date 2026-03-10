@@ -20,6 +20,8 @@ from apps.billing.models import PaymentTransaction, Subscription
 from apps.billing.utils import charge_customer, get_or_create_stripe_customer
 
 from common.email_notifications import (
+    send_trial_expiry_warning_email,
+    send_upcoming_renewal_reminder_email,
     send_renewal_success_email,
     send_renewal_failed_email,
 )
@@ -138,3 +140,67 @@ def _cancel(subscription: Subscription) -> None:
 
     # Disable all chatbots immediately
     subscription.account.whatsapp_chatbot_configs.update(is_active=False)
+
+
+"""
+apps/billing/tasks.py  (reminder tasks — add to existing tasks.py)
+
+Two new daily Celery beat tasks:
+  - send_renewal_reminders   : fires 2 days before next_billing_date (ACTIVE subs)
+  - send_trial_expiry_warnings: fires 2 days before end_date (TRIAL subs)
+"""
+
+
+@shared_task(name="apps.billing.tasks.send_renewal_reminders")
+def send_renewal_reminders():
+    """
+    Runs daily. Finds ACTIVE subscriptions whose next_billing_date
+    is exactly 2 days away and sends a reminder email.
+    """
+    now = timezone.now()
+    target_date = (now + timezone.timedelta(days=2)).date()
+
+    subscriptions = Subscription.objects.filter(
+        status=SubscriptionStatus.ACTIVE,
+        auto_renew=True,
+        next_billing_date__date=target_date,
+    ).select_related("pricing_plan", "account__owner")
+
+    for subscription in subscriptions:
+        try:
+            send_upcoming_renewal_reminder_email(subscription)
+        except Exception as exc:
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "Failed to send renewal reminder for account %s: %s",
+                subscription.account.name,
+                exc,
+            )
+
+
+@shared_task(name="apps.billing.tasks.send_trial_expiry_warnings")
+def send_trial_expiry_warnings():
+    """
+    Runs daily. Finds TRIAL subscriptions whose end_date
+    is exactly 2 days away and sends a warning email.
+    """
+    now = timezone.now()
+    target_date = (now + timezone.timedelta(days=2)).date()
+
+    subscriptions = Subscription.objects.filter(
+        status=SubscriptionStatus.TRIAL,
+        end_date__date=target_date,
+    ).select_related("pricing_plan", "account__owner")
+
+    for subscription in subscriptions:
+        try:
+            send_trial_expiry_warning_email(subscription)
+        except Exception as exc:
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "Failed to send trial expiry warning for account %s: %s",
+                subscription.account.name,
+                exc,
+            )

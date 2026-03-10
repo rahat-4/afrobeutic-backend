@@ -13,5 +13,14 @@ app.conf.beat_schedule = {
         "task": "apps.billing.tasks.process_auto_renewals",
         "schedule": crontab(hour=0, minute=5),  # daily at 00:05 UTC
     },
+    "send-renewal-reminders": {
+        "task": "apps.billing.tasks.send_renewal_reminders",
+        "schedule": crontab(hour=9, minute=0),  # daily 09:00 UTC — morning reminder
+    },
+    "send-trial-expiry-warnings": {
+        "task": "apps.billing.tasks.send_trial_expiry_warnings",
+        "schedule": crontab(hour=9, minute=5),  # daily 09:05 UTC
+    },
 }
+
 app.conf.timezone = "UTC"

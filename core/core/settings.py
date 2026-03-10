@@ -238,6 +238,8 @@ META_APP_ID = config("META_APP_ID")
 META_APP_SECRET = config("META_APP_SECRET")
 CRYPTO_PASSWORD = config("CRYPTO_PASSWORD")
 
+AFROBEUTIC_OWNER_EMAILS = config("AFROBEUTIC_OWNER_EMAILS").split(",")
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
