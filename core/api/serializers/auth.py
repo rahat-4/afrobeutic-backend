@@ -142,6 +142,11 @@ class MeSerializer(serializers.ModelSerializer):
             self.fields.pop("account", None)
 
     def get_is_salon_limit_reached(self, obj):
+        user = self.context.get("request").user
+
+        if user.is_admin or user.is_staff:
+            return False
+
         account = obj.memberships.first().account
         subscription = getattr(account, "account_subscription", None)
 

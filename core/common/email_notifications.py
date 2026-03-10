@@ -142,16 +142,15 @@ def _alert_box(text: str, color: str = "#FFF8EC", border: str = BRAND_COLOR) -> 
 def send_new_booking_admin_email(booking) -> bool:
     """
     Sent to every admin in the account when a new booking is placed.
-    Usage:
-        for admin in account.get_admin_users():
-            send_new_booking_admin_email(booking, admin)
     """
-    from apps.salon.choices import BookingStatus
+    from apps.authentication.choices import AccountMembershipStatus
 
     customer = booking.customer
     customer_name = f"{customer.first_name} {customer.last_name}".strip()
+
     services = ", ".join(s.name for s in booking.services.all()) or "—"
     products = ", ".join(p.name for p in booking.products.all()) or "—"
+
     employee = booking.employee.name if booking.employee else "Not assigned"
     chair = booking.chair.name if booking.chair else "Not assigned"
 
@@ -169,36 +168,44 @@ def send_new_booking_admin_email(booking) -> bool:
         + _detail_row("Notes", booking.notes or "—")
     )
 
-    body = f"""
-      {_greeting("Admin")}
-      <p style="font-size:16px;color:{BRAND_TEXT};margin:0 0 24px;">
-        A new booking has been placed at <strong>{booking.salon.name}</strong>.
-        Here are the full details:
-      </p>
-      {_detail_table(rows)}
-      {_cta_button("View Booking", f"{settings.FRONTEND_URL}/bookings/{booking.uid}")}
-      <p style="font-size:13px;color:#AAA;margin:0;">
-        This notification was sent to all admins of your account.
-      </p>
-      """
+    # Get admin memberships
+    admin_memberships = booking.account.members.filter(
+        role__in=["OWNER", "ADMIN"], status=AccountMembershipStatus.ACTIVE
+    ).select_related("user")
 
-    # Send to all admins
-    admin_emails = list(
-        booking.account.account_users.filter(role__in=["OWNER", "ADMIN"]).values_list(
-            "user__email", flat=True
-        )
-    )
-
-    if not admin_emails:
+    if not admin_memberships.exists():
         return False
 
-    message = Mail(
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to_emails=admin_emails,
-        subject=f"📅 New Booking — {customer_name} on {booking.booking_date.strftime('%b %d')}",
-        html_content=_base_template("New Booking", body),
-    )
-    return _send(message)
+    success = True
+
+    for membership in admin_memberships:
+        admin = membership.user
+        admin_name = f"{admin.first_name} {admin.last_name}".strip() or "Admin"
+
+        body = f"""
+          {_greeting(admin_name)}
+          <p style="font-size:16px;color:{BRAND_TEXT};margin:0 0 24px;">
+            A new booking has been placed at <strong>{booking.salon.name}</strong>.
+            Here are the full details:
+          </p>
+          {_detail_table(rows)}
+          {_cta_button("View Booking", f"{settings.FRONTEND_URL}/dashboard/client-panel")}
+          <p style="font-size:13px;color:#AAA;margin:0;">
+            This notification was sent to all admins of your account.
+          </p>
+        """
+
+        message = Mail(
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to_emails=[admin.email],
+            subject=f"📅 New Booking — {customer_name} on {booking.booking_date.strftime('%b %d')}",
+            html_content=_base_template("New Booking", body),
+        )
+
+        if not _send(message):
+            success = False
+
+    return success
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -270,7 +277,7 @@ def send_new_client_registration_owner_email(account) -> bool:
         A new client has just registered on <strong>Afrobeutic</strong>.
       </p>
       {_detail_table(rows)}
-      {_cta_button("View in Dashboard", f"{settings.FRONTEND_URL}/admin/accounts/{account.uid}")}
+      {_cta_button("View in Dashboard", f"{settings.FRONTEND_URL}/dashboard/admin-panel")}
 """
 
     message = Mail(
@@ -322,7 +329,7 @@ def send_new_client_welcome_email(account) -> bool:
           </tr>
         </table>
 
-        {_cta_button("Go to Dashboard", f"{settings.FRONTEND_URL}/dashboard")}
+        {_cta_button("Go to Dashboard", f"{settings.FRONTEND_URL}/dashboard/client-panel")}
 
         {_alert_box(
             "You're currently on a <strong>free trial</strong>. Explore all features and upgrade whenever you're ready.",
@@ -373,7 +380,7 @@ def send_upcoming_renewal_reminder_email(subscription) -> bool:
             "Make sure your payment method is up to date to avoid any interruption to your service.",
             color="#FFFBF0", border=BRAND_COLOR
         )}
-        {_cta_button("Review Billing Details", f"{settings.FRONTEND_URL}/billing")}
+        {_cta_button("Review Billing Details", f"{settings.FRONTEND_URL}/dashboard/client-panel/accounts/billing")}
         <p style="font-size:13px;color:#AAA;margin:0;">
           If you wish to cancel auto-renewal, you can do so from your billing settings before the renewal date.
         </p>
@@ -430,7 +437,7 @@ def send_trial_expiry_warning_email(subscription) -> bool:
           </tr>
         </table>
 
-        {_cta_button("Choose a Plan", f"{settings.FRONTEND_URL}/billing", color="#D4A843")}
+        {_cta_button("Choose a Plan", f"{settings.FRONTEND_URL}/dashboard/client-panel/accounts/billing", color="#D4A843")}
 
         <p style="font-size:13px;color:#AAA;margin:0;">
           Questions about pricing? Reply to this email and we'll help you find the right plan.
@@ -548,7 +555,7 @@ def send_plan_change_failed_email(account, plan_name: str) -> bool:
   </p>
 
   <div style="text-align: center; margin: 30px 0;">
-    <a href="{settings.FRONTEND_URL}/billing"
+    <a href="{settings.FRONTEND_URL}/dashboard/client-panel/accounts/billing"
        style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
       Update Payment Method
     </a>
@@ -650,7 +657,7 @@ def send_renewal_failed_email(subscription: Subscription) -> bool:
   </div>
 
   <div style="text-align: center; margin: 30px 0;">
-    <a href="{settings.FRONTEND_URL}/billing"
+    <a href="{settings.FRONTEND_URL}/dashboard/client-panel/accounts/billing"
        style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
       Re-subscribe Now
     </a>
