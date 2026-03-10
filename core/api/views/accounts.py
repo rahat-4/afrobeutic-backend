@@ -34,6 +34,10 @@ from apps.support.models import AccountSupportTicket
 
 
 from common.permissions import IsOwner, IsOwnerOrAdmin, IsOwnerOrAdminOrStaff
+from common.email_notifications import (
+    send_plan_change_success_email,
+    send_plan_change_failed_email,
+)
 
 from ..serializers.accounts import (
     AccountAccessSerializer,
@@ -143,43 +147,99 @@ class AccountSubscriptionDetailView(RetrieveUpdateAPIView):
             account = self.request.account
             subscription = self.get_object()
 
-            pricing_plan = serializer.validated_data.get("pricing_plan")
+            new_plan = serializer.validated_data.get("pricing_plan")
             payment_card = serializer.validated_data.get("payment_card")
             auto_renew = serializer.validated_data.get(
                 "auto_renew", subscription.auto_renew
             )
 
-            # Case 1: Only auto_renew update
-            if pricing_plan is None:
+            # ── Case 1: Only toggling auto_renew ─────────────────────────────
+            if new_plan is None:
                 subscription.auto_renew = auto_renew
                 subscription.save(update_fields=["auto_renew"])
                 return
 
-            customer_id = get_or_create_stripe_customer(account)
+            # ── Case 2: Plan change (upgrade or downgrade) ────────────────────
 
-            # Use saved card token
-            payment_method_id = payment_card.card_token
-
-            intent = charge_customer(
-                customer_id,
-                payment_method_id,
-                pricing_plan.price,
+            # Stack messages: carry over whatever is left and add new plan pool.
+            # new_plan.total_messages = chatbot_limit × messages_per_chatbot
+            old_plan_name = subscription.pricing_plan.name
+            new_remaining = (
+                subscription.remaining_whatsapp_messages + new_plan.total_messages
             )
 
+            # ── Attempt charge ────────────────────────────────────────────────
+            try:
+                customer_id = get_or_create_stripe_customer(account)
+                intent = charge_customer(
+                    customer_id,
+                    payment_card.card_token,
+                    new_plan.price,
+                )
+            except Exception as exc:
+                print(
+                    "Plan change payment failed for account %s: %s", account.name, exc
+                )
+                # Record failed transaction
+                PaymentTransaction.objects.create(
+                    account=account,
+                    subscription=subscription,
+                    amount=new_plan.price,
+                    currency="USD",
+                    transaction_id=f"failed_{account.pk}_{timezone.now().timestamp()}",
+                    status=PaymentTransactionStatus.FAILED,
+                    payment_method=payment_card.card_token,
+                )
+                # Send failure email immediately
+                send_plan_change_failed_email(account, new_plan.name)
+                raise  # re-raise so transaction.atomic() rolls back
+
+            # ── Record successful transaction ─────────────────────────────────
             PaymentTransaction.objects.create(
                 account=account,
                 subscription=subscription,
-                amount=pricing_plan.price,
+                amount=new_plan.price,
                 currency="USD",
                 transaction_id=intent.id,
-                status=PaymentTransactionStatus.PENDING,
-                payment_method=payment_method_id,
+                status=PaymentTransactionStatus.SUCCEEDED,
+                payment_method=payment_card.card_token,
             )
 
-            subscription.pricing_plan = pricing_plan
-            subscription.status = SubscriptionStatus.PENDING
+            # ── Persist plan change + stacked balance ─────────────────────────
+            now = timezone.now()
+            subscription.pricing_plan = new_plan
+            subscription.status = SubscriptionStatus.ACTIVE
             subscription.auto_renew = auto_renew
-            subscription.save(update_fields=["pricing_plan", "status", "auto_renew"])
+            subscription.remaining_whatsapp_messages = new_remaining
+            subscription.start_date = now
+            subscription.end_date = now + timezone.timedelta(days=30)
+            subscription.next_billing_date = subscription.end_date
+            subscription.save(
+                update_fields=[
+                    "pricing_plan",
+                    "status",
+                    "auto_renew",
+                    "remaining_whatsapp_messages",
+                    "start_date",
+                    "end_date",
+                    "next_billing_date",
+                ]
+            )
+
+            # ── Send success email immediately ────────────────────────────────
+            send_plan_change_success_email(subscription, old_plan_name)
+
+    def update(self, request, *args, **kwargs):
+        """Override to return a clean error response if payment fails."""
+        try:
+            return super().update(request, *args, **kwargs)
+        except Exception:
+            return Response(
+                {
+                    "error": "Payment failed. Please check your card details and try again."
+                },
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
 
 
 class AccountBillingHistoryListView(ListAPIView):

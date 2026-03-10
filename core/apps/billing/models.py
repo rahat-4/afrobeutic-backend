@@ -38,6 +38,11 @@ class PricingPlan(BaseModel):
             )
         ]
 
+    @property
+    def total_messages(self):
+        """Total messages across all chatbots for this plan."""
+        return self.whatsapp_chatbot_limit * self.whatsapp_messages_per_chatbot
+
     def __str__(self):
         return f"{self.get_account_category_display()} - {self.name} (${self.price})"
 
@@ -60,6 +65,20 @@ class Subscription(BaseModel):
 
     notes = models.TextField(blank=True, null=True)
 
+    # ── Stacked message balance ───────────────────────────────────────────────
+    # When a plan changes (upgrade or downgrade), the unused messages from the
+    # previous plan carry over and are added to the new plan's allowance.
+    # This field is the single source of truth for how many messages remain.
+    # It is initialised when the subscription is first created and updated on
+    # every plan change inside perform_update().
+    remaining_whatsapp_messages = models.PositiveIntegerField(
+        default=0,
+        help_text=(
+            "Stacked remaining messages. On plan change: "
+            "new_remaining = current_remaining + new_plan.total_messages"
+        ),
+    )
+
     # Fk
     pricing_plan = models.ForeignKey(
         PricingPlan, on_delete=models.PROTECT, related_name="pricing_plan_subscriptions"
@@ -81,6 +100,36 @@ class Subscription(BaseModel):
     @property
     def messages_per_chatbot(self):
         return self.pricing_plan.whatsapp_messages_per_chatbot
+
+    def has_remaining_messages(self):
+        return self.remaining_whatsapp_messages > 0
+
+    def consume_message(self):
+        """
+        Decrement remaining_whatsapp_messages by 1 atomically.
+        Call this each time the bot sends a reply.
+        Returns True if the message was allowed, False if quota was exhausted.
+        """
+        updated = Subscription.objects.filter(
+            pk=self.pk,
+            remaining_whatsapp_messages__gt=0,
+        ).update(
+            remaining_whatsapp_messages=models.F("remaining_whatsapp_messages") - 1
+        )
+        return updated > 0
+
+    def stack_messages(self, new_plan: PricingPlan) -> int:
+        """
+        Add new_plan.total_messages on top of the current balance.
+        Saves and returns the new total.
+        Used on renewal AND plan upgrade/downgrade.
+        """
+        new_remaining = self.remaining_whatsapp_messages + new_plan.total_messages
+        Subscription.objects.filter(pk=self.pk).update(
+            remaining_whatsapp_messages=new_remaining
+        )
+        self.remaining_whatsapp_messages = new_remaining
+        return new_remaining
 
 
 class PaymentCard(BaseModel):
@@ -119,6 +168,8 @@ class PaymentTransaction(BaseModel):
         default=PaymentTransactionStatus.PENDING,
     )
     payment_method = models.CharField(max_length=50, blank=True, null=True)
+    # Track which attempt this was (0 = initial, 1–3 = retries)
+    attempt_number = models.PositiveSmallIntegerField(default=0)
 
     # Fk
     subscription = models.ForeignKey(

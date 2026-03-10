@@ -57,37 +57,32 @@ class WhatsappChatbotConfig(BaseModel):
             return 0
         return max(plan_limit - self.messages_sent_count(), 0)
 
-    def has_remaining_messages(self):
-        return self.remaining_messages() > 0
+    def has_remaining_messages(self) -> bool:
+        """
+        Delegates to Subscription.remaining_whatsapp_messages — the stacked
+        balance that carries over across plan changes.
+        """
+        try:
+            return self.account.account_subscription.has_remaining_messages()
+        except Exception:
+            return False
+
+    def consume_message(self) -> bool:
+        """
+        Atomically decrement the account's stacked message balance by 1.
+        Returns True if allowed, False if quota exhausted.
+        Call this AFTER the bot reply is generated, before sending.
+        """
+        try:
+            return self.account.account_subscription.consume_message()
+        except Exception:
+            return False
 
     def __str__(self):
         return f"WhatsappChatbotConfig — {self.salon.name}"
 
-
-class WhatsappThreadMapping(BaseModel):
-    """
-    Maps a (customer, salon) pair to an OpenAI thread_id so conversation
-    context persists across multiple WhatsApp messages.
-    """
-
-    thread_id = models.CharField(max_length=255, blank=True, null=True)
-
-    customer = models.ForeignKey(
-        Customer,
-        on_delete=models.CASCADE,
-        related_name="whatsapp_threads",
-    )
-    salon = models.ForeignKey(
-        Salon,
-        on_delete=models.CASCADE,
-        related_name="whatsapp_threads",
-    )
-
-    class Meta:
-        unique_together = ("customer", "salon")
-
     def __str__(self):
-        return f"Thread {self.thread_id} — {self.customer.phone} @ {self.salon.name}"
+        return f"WhatsappChatbotConfig — {self.salon.name}"
 
 
 class WhatsappChatbotMessageLog(BaseModel):

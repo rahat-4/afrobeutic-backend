@@ -217,6 +217,16 @@ class WhatsappCallbackView(APIView):
                 "Please try again or call us directly."
             )
 
+        # ── 8. Atomically consume one message from the stacked balance ────────
+        # Do this BEFORE sending so a failed send doesn't leak a free message.
+        allowed = bot.consume_message()
+        if not allowed:
+            # Race condition: quota hit between the check (step 6) and now
+            logger.warning(
+                "Message quota exhausted mid-flight for salon: %s", salon.name
+            )
+            return JsonResponse({"status": "ok"})
+
         # ── 8. Log outbound reply ─────────────────────────────────────────────
         _log_message(bot, customer, reply, WhatsappChatbotMessageRole.BOT)
 

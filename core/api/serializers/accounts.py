@@ -153,10 +153,68 @@ class AccountSubscriptionSerializer(serializers.ModelSerializer):
 
         return value
 
+    def validate(self, attrs):
+        request = self.context["request"]
+        account = request.account
+        new_plan = attrs.get("pricing_plan")
+
+        if not new_plan:
+            return attrs
+
+        try:
+            current_sub = account.account_subscription
+            current_plan = current_sub.pricing_plan
+        except Subscription.DoesNotExist:
+            return attrs
+
+        # ── Collect current resource usage ────────────────────────────────────
+        current_salon_count = account.account_salons.count()
+        current_chatbot_count = account.account_chatbot_config.filter(
+            is_active=True
+        ).count()
+
+        downgrade_errors = []
+
+        # ── Salon limit check ─────────────────────────────────────────────────
+        if new_plan.salon_limit < current_salon_count:
+            excess = current_salon_count - new_plan.salon_limit
+            downgrade_errors.append(
+                f"{current_salon_count} salon(s) active — new plan allows "
+                f"{new_plan.salon_limit}. Please delete {excess} salon(s) first."
+            )
+
+        # ── Chatbot limit check ───────────────────────────────────────────────
+        if new_plan.whatsapp_chatbot_limit < current_chatbot_count:
+            excess = current_chatbot_count - new_plan.whatsapp_chatbot_limit
+            downgrade_errors.append(
+                f"{current_chatbot_count} chatbot(s) active — new plan allows "
+                f"{new_plan.whatsapp_chatbot_limit}. Please delete {excess} chatbot(s) first."
+            )
+
+        if downgrade_errors:
+            # Bundle all resource conflicts into one clear error
+            detail = f"Cannot switch to '{new_plan.name}': " + " ".join(
+                downgrade_errors
+            )
+            raise serializers.ValidationError({"downgrade_warning": detail})
+
+        return attrs
+
     def to_representation(self, instance):
+        from common.serializers import PricingPlanSlimSerializer
+
         rep = super().to_representation(instance)
         rep["pricing_plan"] = PricingPlanSlimSerializer(instance.pricing_plan).data
+        rep["remaining_messages"] = self._get_remaining_messages(instance)
         return rep
+
+    def _get_remaining_messages(self, instance):
+        """
+        Total remaining = messages already used subtracted from the
+        STACKED pool (carried-over balance + new plan allowance).
+        Stored on the subscription so it survives plan changes.
+        """
+        return getattr(instance, "remaining_whatsapp_messages", None)
 
 
 class AccountBillingHistorySerializer(serializers.ModelSerializer):

@@ -46,6 +46,7 @@ THIRD_PARTY_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "simple_history",
     "django.contrib.gis",
+    "django_celery_beat",
 ]
 
 PROJECT_APPS = [
@@ -311,3 +312,6 @@ CORS_ALLOW_HEADERS = [
 CORS_EXPOSE_HEADERS = [
     "X-ACCOUNT-ID",
 ]
+
+CELERY_BROKER_URL = config("REDIS_URL", default="redis://redis:6379/0")
+CELERY_RESULT_BACKEND = config("REDIS_URL", default="redis://redis:6379/0")
