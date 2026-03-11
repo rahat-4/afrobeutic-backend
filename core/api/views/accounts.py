@@ -229,18 +229,6 @@ class AccountSubscriptionDetailView(RetrieveUpdateAPIView):
             # ── Send success email immediately ────────────────────────────────
             send_plan_change_success_email(subscription, old_plan_name)
 
-    def update(self, request, *args, **kwargs):
-        """Override to return a clean error response if payment fails."""
-        try:
-            return super().update(request, *args, **kwargs)
-        except Exception:
-            return Response(
-                {
-                    "error": "Payment failed. Please check your card details and try again."
-                },
-                status=status.HTTP_402_PAYMENT_REQUIRED,
-            )
-
 
 class AccountBillingHistoryListView(ListAPIView):
     serializer_class = AccountBillingHistorySerializer
