@@ -150,7 +150,7 @@ class SalonServiceListView(ListCreateAPIView):
         filters.SearchFilter,
         filters.OrderingFilter,
     ]
-    search_fields = ["name", "category__name"]
+    search_fields = ["name", "category__name", "sub_category__name"]
     ordering_fields = ["created_at", "price"]
     ordering = ["-created_at"]
 
@@ -167,7 +167,7 @@ class SalonServiceListView(ListCreateAPIView):
         account = self.request.account
         salon_uid = self.kwargs.get("salon_uid")
 
-        return Service.objects.filter(
+        return Service.objects.select_related("category", "sub_category").filter(
             account=account,
             salon__uid=salon_uid,
             account__members__user=user,
@@ -215,7 +215,7 @@ class SalonProductListView(ListCreateAPIView):
         filters.SearchFilter,
         filters.OrderingFilter,
     ]
-    search_fields = ["name", "category__name"]
+    search_fields = ["name", "category__name", "sub_category__name"]
     ordering_fields = ["created_at", "price"]
     ordering = ["-created_at"]
 
@@ -232,7 +232,7 @@ class SalonProductListView(ListCreateAPIView):
         account = self.request.account
         salon_uid = self.kwargs.get("salon_uid")
 
-        return Product.objects.filter(
+        return Product.objects.select_related("category", "sub_category").filter(
             account=account,
             salon__uid=salon_uid,
             account__members__user=user,

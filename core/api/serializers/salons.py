@@ -67,6 +67,8 @@ class SalonSerializer(serializers.ModelSerializer):
     )
     latitude = serializers.CharField(write_only=True)
     longitude = serializers.CharField(write_only=True)
+    is_chatbot_available = serializers.SerializerMethodField()
+    is_chatbot_configured = serializers.SerializerMethodField()
 
     class Meta:
         model = Salon
@@ -97,10 +99,24 @@ class SalonSerializer(serializers.ModelSerializer):
             "status",
             "about_salon",
             "professional_career_details",
+            "is_chatbot_available",
+            "is_chatbot_configured",
             "opening_hours",
             "created_at",
             "updated_at",
         ]
+
+    def get_is_chatbot_available(self, obj):
+        account = self.context.get("request").account
+        subscription = getattr(account, "account_subscription", None)
+
+        if subscription:
+            chatbot_limit = subscription.pricing_plan.whatsapp_chatbot_limit
+            return chatbot_limit > 0
+        return False
+
+    def get_is_chatbot_configured(self, obj):
+        return hasattr(obj, "salon_chatbot_config")
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
