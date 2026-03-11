@@ -109,7 +109,7 @@ class AccountSlimSerializer(serializers.ModelSerializer):
 
 
 class MeSerializer(serializers.ModelSerializer):
-    account = AccountSlimSerializer(source="memberships.first.account")
+    account = serializers.CharField(write_only=True, required=False)
     is_salon_limit_reached = serializers.SerializerMethodField()
     role = serializers.SerializerMethodField()
 
@@ -141,14 +141,24 @@ class MeSerializer(serializers.ModelSerializer):
         if user.is_admin or user.is_staff:
             self.fields.pop("account", None)
 
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        request = self.context.get("request")
+        user = request.user
+        if not (user.is_admin or user.is_staff):
+            account = request.account
+            rep["account"] = AccountSlimSerializer(account).data
+
+        return rep
+
     def get_is_salon_limit_reached(self, obj):
         request = self.context.get("request")
         user = request.user
-        account = request.account
 
         if user.is_admin or user.is_staff:
             return False
 
+        account = request.account
         subscription = getattr(account, "account_subscription", None)
 
         if subscription:
@@ -176,7 +186,7 @@ class MeSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         request = self.context.get("request")
-        account_data = validated_data.pop("memberships", None)
+        account_data = validated_data.pop("account", None)
 
         # Update user fields normally
         instance = super().update(instance, validated_data)
@@ -198,7 +208,7 @@ class MeSerializer(serializers.ModelSerializer):
                 )
 
             account_instance = account
-            account_instance.name = account_data["first"]["account"]["name"]
+            account_instance.name = account_data
             account_instance.save()
 
         return instance
