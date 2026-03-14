@@ -38,6 +38,10 @@ from apps.salon.models import Customer
 from common.models import CustomerOtp
 from common.throttles import RoleBasedLoginThrottle
 from common.utils import email_token_generator, generate_otp, otp_expiry
+from common.email_notifications import (
+    send_new_client_registration_owner_email,
+    send_new_client_welcome_email,
+)
 
 
 from ..serializers.auth import (
@@ -89,6 +93,9 @@ class VerifyEmailView(APIView):
         if email_token_generator.check_token(user, token):
             user.is_active = True
             user.save()
+
+            send_new_client_registration_owner_email
+            send_new_client_welcome_email
 
             Subscription.objects.filter(
                 account__owner=user, status=SubscriptionStatus.PENDING
