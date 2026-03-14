@@ -1502,7 +1502,14 @@ class SalonWhatsappChatbotConfigView(APIView):
 
 
 class SalonWhatsappView(APIView):
-    permission_classes = [IsOwnerOrAdmin]
+    def get_permissions(self):
+
+        if self.request.method == "POST":
+            self.permission_classes = [IsOwnerOrAdmin]
+        else:
+            self.permission_classes = [IsOwnerOrAdminOrStaff]
+
+        return super().get_permissions()
 
     # -------------------------
     # Helpers

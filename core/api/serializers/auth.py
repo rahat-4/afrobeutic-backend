@@ -17,7 +17,6 @@ User = get_user_model()
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     confirm_password = serializers.CharField(write_only=True, min_length=8)
-    account_timezone = serializers.CharField(write_only=True)
     account_type = serializers.CharField(write_only=True)
 
     class Meta:
@@ -28,7 +27,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             "last_name",
             "email",
             "country",
-            "account_timezone",
             "account_type",
             "password",
             "confirm_password",
@@ -52,7 +50,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             validated_data.pop("confirm_password", None)
             password = validated_data.pop("password")
             account_type = validated_data.pop("account_type")
-            account_timezone = validated_data.pop("account_timezone")
 
             user = User(**validated_data)
             user.is_active = False  # User must verify email to activate account
@@ -63,7 +60,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
                 name=f"{user.first_name}'s Account",
                 owner=user,
                 account_type=account_type,
-                account_timezone=account_timezone,
             )
 
             AccountMembership.objects.create(

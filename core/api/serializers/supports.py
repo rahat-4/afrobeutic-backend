@@ -72,9 +72,8 @@ class CustomerEnquirySerializer(serializers.ModelSerializer):
     )
     first_name = serializers.CharField(write_only=True)
     last_name = serializers.CharField(write_only=True)
-    email = serializers.EmailField(write_only=True)
+    email = serializers.EmailField(write_only=True, allow_blank=True, required=False)
     phone = serializers.CharField(write_only=True)
-    source = serializers.CharField(write_only=True)
     lead = CustomerSlimSerializer(source="customer", read_only=True)
 
     class Meta:
@@ -85,7 +84,6 @@ class CustomerEnquirySerializer(serializers.ModelSerializer):
             "last_name",
             "email",
             "phone",
-            "source",
             "type",
             "summary",
             "status",
@@ -110,6 +108,11 @@ class CustomerEnquirySerializer(serializers.ModelSerializer):
 
         if account.account_type == AccountType.SALON_SHOP:
             salon = attrs.get("salon")
+
+            # If update, fallback to instance value
+            if not salon and self.instance:
+                salon = getattr(self.instance, "salon", None)
+
             if not salon:
                 raise serializers.ValidationError({"salon": ["Salon is required."]})
 
@@ -124,7 +127,6 @@ class CustomerEnquirySerializer(serializers.ModelSerializer):
 
         if not phone and self.instance:
             customer = getattr(self.instance, "customer", None)
-
             phone = getattr(customer, "phone", None)
 
         if not phone:
@@ -137,7 +139,6 @@ class CustomerEnquirySerializer(serializers.ModelSerializer):
         first_name = validated_data.pop("first_name")
         last_name = validated_data.pop("last_name")
         email = validated_data.pop("email", None)
-        source = validated_data.pop("source")
 
         account = self.context["request"].account
 
@@ -151,7 +152,7 @@ class CustomerEnquirySerializer(serializers.ModelSerializer):
         with transaction.atomic():
 
             source = get_or_create_category(
-                source, salon.account, category_type=CategoryType.CUSTOMER_SOURCE
+                "Manual", salon.account, category_type=CategoryType.CUSTOMER_SOURCE
             )
 
             customer, _ = Customer.objects.get_or_create(

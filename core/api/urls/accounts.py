@@ -7,6 +7,7 @@ from ..views.accounts import (
     AccountAccessListView,
     AccountPricingPlanDetailView,
     AccountPricingPlanListView,
+    AccountSubscriptionValidationView,
     AccountSubscriptionDetailView,
     AccountBillingHistoryListView,
     AccountDashboardApiView,
@@ -28,6 +29,11 @@ urlpatterns = [
         "/subscription",
         AccountSubscriptionDetailView.as_view(),
         name="account.subscription-detail",
+    ),
+    path(
+        "/subscription/validation",
+        AccountSubscriptionValidationView.as_view(),
+        name="account.subscription-validation",
     ),
     path(
         "/pricing-plans/<uuid:pricing_plan_uid>",

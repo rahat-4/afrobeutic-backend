@@ -21,7 +21,12 @@ from rest_framework.generics import (
 
 from apps.authentication.models import Account, AccountMembership
 
-from apps.billing.models import PricingPlan, PaymentTransaction, PaymentCard
+from apps.billing.models import (
+    PricingPlan,
+    PaymentTransaction,
+    PaymentCard,
+    Subscription,
+)
 from apps.billing.choices import PaymentTransactionStatus, SubscriptionStatus
 from apps.billing.utils import (
     get_or_create_stripe_customer,
@@ -133,6 +138,96 @@ class AccountPricingPlanDetailView(RetrieveAPIView):
             return pricing_plan
         except PricingPlan.DoesNotExist:
             raise ValidationError("Pricing plan not found.")
+
+
+class AccountSubscriptionValidationView(APIView):
+    permission_classes = [IsOwnerOrAdmin]
+
+    def post(self, request):
+        account = request.account
+        plan_uid = request.data.get("pricing_plan")
+
+        if not plan_uid:
+            return Response(
+                {"error": "pricing_plan is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ── Get new plan ─────────────────────────────────────
+        try:
+            new_plan = PricingPlan.objects.get(uid=plan_uid)
+        except PricingPlan.DoesNotExist:
+            return Response(
+                {"error": "Invalid pricing plan"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ── Get current subscription ─────────────────────────
+        try:
+            current_sub = account.account_subscription
+            current_plan = current_sub.pricing_plan
+        except Subscription.DoesNotExist:
+            current_plan = None
+
+        # ── Prevent selecting same plan ──────────────────────
+        if current_plan and current_plan.id == new_plan.id:
+            return Response(
+                {"message": "You are already subscribed to this plan."},
+                status=status.HTTP_200_OK,
+            )
+
+        # ── Current resource usage ───────────────────────────
+        current_salon_count = account.account_salons.count()
+
+        current_chatbot_count = account.account_chatbot_config.filter(
+            is_active=True
+        ).count()
+
+        downgrade_errors = []
+
+        # ── Only validate limits when downgrading ────────────
+        if current_plan and new_plan.price < current_plan.price:
+
+            # Salon limit check
+            if new_plan.salon_limit < current_salon_count:
+                excess = current_salon_count - new_plan.salon_limit
+                downgrade_errors.append(
+                    f"{current_salon_count} salon(s) active — new plan allows "
+                    f"{new_plan.salon_limit}. Please delete {excess} salon(s) first."
+                )
+
+            # Chatbot limit check
+            if new_plan.whatsapp_chatbot_limit < current_chatbot_count:
+                excess = current_chatbot_count - new_plan.whatsapp_chatbot_limit
+                downgrade_errors.append(
+                    f"{current_chatbot_count} chatbot(s) active — new plan allows "
+                    f"{new_plan.whatsapp_chatbot_limit}. Please delete {excess} chatbot(s) first."
+                )
+
+        # ── If downgrade blocked ─────────────────────────────
+        if downgrade_errors:
+            return Response(
+                {
+                    "allowed": False,
+                    "message": f"Cannot switch to '{new_plan.name}'.",
+                    "errors": downgrade_errors,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ── Plan change allowed ──────────────────────────────
+        return Response(
+            {
+                "allowed": True,
+                "message": "Plan change allowed",
+                "plan": {
+                    "uid": new_plan.uid,
+                    "name": new_plan.name,
+                    "price": str(new_plan.price),
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class AccountSubscriptionDetailView(RetrieveUpdateAPIView):
